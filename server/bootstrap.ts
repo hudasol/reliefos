@@ -11,6 +11,7 @@ import { FixtureSource } from './catalog/fixtures.js';
 import { PayPalGateway } from './payments/paypal.js';
 import { createApp } from './api/app.js';
 import type { Deps } from './services/core.js';
+import { inlineRunner, renderWorkflowsRunner } from './jobs/jobs.js';
 
 export function makeLogger(level: AppConfig['logLevel']) {
   return pino({
@@ -97,18 +98,20 @@ export function integrationStatuses(config: AppConfig, db: Database): Integratio
           id: 'render-workflows',
           label: 'Render Workflows',
           state: 'live',
-          detail: `Long jobs dispatched to workflow ${config.renderWorkflows.slug}.`,
+          detail: `Security suite and payment reconciliation run as tasks of workflow ${config.renderWorkflows.slug}.`,
         }
       : {
           id: 'render-workflows',
           label: 'Render Workflows',
           state: 'not-configured',
-          detail: 'RENDER_API_KEY/RENDER_WORKFLOW_SLUG not set: jobs run in-process.',
+          detail:
+            'RENDER_API_KEY/RENDER_WORKFLOW_SLUG not set: the security suite and payment reconciliation run in-process.',
         },
   ];
 }
 
-export async function buildServer(config: AppConfig) {
+/** The service graph shared by the HTTP server and the Render workflow service. */
+export async function buildDeps(config: AppConfig) {
   const log = makeLogger(config.logLevel);
   const db = await openDatabase({
     databaseUrl: config.databaseUrl,
@@ -139,6 +142,14 @@ export async function buildServer(config: AppConfig) {
     now: () => new Date(),
     log,
   };
+  const jobs = config.renderWorkflows
+    ? renderWorkflowsRunner(deps, config.renderWorkflows)
+    : inlineRunner(deps);
+  return { db, deps, log, jobs };
+}
+
+export async function buildServer(config: AppConfig) {
+  const { db, deps, log, jobs } = await buildDeps(config);
 
   // The compiled server runs from the repository root (npm start), where the client build lives.
   const staticDir = path.resolve(process.cwd(), 'dist/web');
@@ -161,6 +172,7 @@ export async function buildServer(config: AppConfig) {
     secureCookies: config.env === 'production',
     publicConfig,
     staticDir,
+    jobs,
   });
-  return { app, db, log, deps };
+  return { app, db, log, deps, jobs };
 }

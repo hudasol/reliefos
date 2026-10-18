@@ -34,11 +34,11 @@ import {
   reconcilePayment,
 } from '../services/payments.js';
 import { runMarketEvent } from '../services/events.js';
-import { runSecuritySuite, SECURITY_SCENARIOS } from '../services/securityLab.js';
+import { SECURITY_SCENARIOS } from '../services/securityLab.js';
+import { inlineRunner, type JobRunner } from '../jobs/jobs.js';
 import { analytics, candidateViews, missionReport } from '../services/readModels.js';
 import { POLICY_CHECK_CATALOG } from '../policy/engine.js';
 import { MIGRATIONS } from '../db/migrations.js';
-import { Store } from '../repo/store.js';
 import { utcToZonedParts } from '../../shared/time.js';
 import { errorHandler } from './errors.js';
 import {
@@ -56,8 +56,8 @@ export interface AppOptions {
   secureCookies: boolean;
   publicConfig: () => PublicConfig;
   staticDir: string | null;
-  /** Optional runner for long jobs (Render Workflows). Defaults to in-process execution. */
-  jobs?: { runSecuritySuite?: (missionId: string) => Promise<unknown> };
+  /** Runner for long jobs (Render Workflows when configured). Defaults to in-process execution. */
+  jobs?: JobRunner;
 }
 
 type Handler = (req: Request, res: Response) => Promise<unknown>;
@@ -73,6 +73,7 @@ const actorOf = (req: Request) => `workspace:${req.workspaceId!.slice(0, 8)}`;
 
 export function createApp(opts: AppOptions) {
   const { deps } = opts;
+  const jobs = opts.jobs ?? inlineRunner(deps);
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
@@ -403,30 +404,9 @@ export function createApp(opts: AppOptions) {
     '/missions/:id/security-runs',
     heavy,
     h(async (req, res) => {
-      const id = param(req, 'id');
-      const mission = await store(deps).getMission(req.workspaceId!, id);
-      const run = {
-        id: newId(),
-        missionId: id,
-        ...(await runSecuritySuite({ now: deps.now(), db: deps.db })),
-      };
-      await deps.db.tx(async (q) => {
-        const s = new Store(q);
-        await s.insertSecurityRun(run);
-        await s.audit({
-          workspaceId: req.workspaceId!,
-          missionId: id,
-          type: 'security.suite_run',
-          actor: actorOf(req),
-          summary: `DEADMAN suite ${run.suiteVersion}: ${run.passed}/${run.results.length} scenarios enforced`,
-          data: {
-            runId: run.id,
-            failed: run.results.filter((r) => !r.passed).map((r) => r.scenarioId),
-            missionTitle: mission.title,
-          },
-        });
-      });
-      res.status(201).json(run);
+      const out = await jobs.runSecuritySuite(req.workspaceId!, param(req, 'id'), actorOf(req));
+      if (out.mode === 'inline') res.status(201).json(out.run);
+      else res.status(202).json({ dispatched: 'render-workflows', taskRunId: out.taskRunId });
     }),
   );
 

@@ -804,6 +804,17 @@ export class Store {
     );
     return rows[0]?.mission_id ?? null;
   }
+  /** Operations whose outcome is not yet confirmed by PayPal, oldest first, across all missions. */
+  async listUnresolvedPayments(notUpdatedSince: Date, limit: number): Promise<PaymentRow[]> {
+    return (
+      await this.q.query<Row>(
+        `SELECT * FROM payment_operations
+         WHERE status IN ('UNKNOWN','PROVIDER_PENDING','CAPTURE_PENDING') AND updated_at < $1
+         ORDER BY updated_at LIMIT $2`,
+        [notUpdatedSince.toISOString(), limit],
+      )
+    ).map(toPayment);
+  }
   async paymentByOrderId(orderId: string): Promise<PaymentRow | null> {
     const rows = await this.q.query<Row>(
       'SELECT * FROM payment_operations WHERE provider_order_id = $1',

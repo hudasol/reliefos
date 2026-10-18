@@ -90,10 +90,11 @@ export const useAgentRuns = (id: string) =>
     queryKey: ['mission', id, 'agent-runs'],
     queryFn: () => api.get<AgentRun[]>(`${m(id)}/agent-runs`),
   });
-export const useSecurityRuns = (id: string) =>
+export const useSecurityRuns = (id: string, pollMs: number | false = false) =>
   useQuery({
     queryKey: ['mission', id, 'security-runs'],
     queryFn: () => api.get<SecurityTestRun[]>(`${m(id)}/security-runs`),
+    refetchInterval: pollMs,
   });
 export const useSecurityCatalog = () =>
   useQuery({
@@ -167,7 +168,11 @@ export const useMarketEvent = (id: string) =>
     api.post<DrillOutcome>(`${m(id)}/events`, { kind }),
   );
 export const useRunSecuritySuite = (id: string) =>
-  useMissionMutation(id, () => api.post<SecurityTestRun>(`${m(id)}/security-runs`));
+  useMissionMutation(id, () =>
+    api.post<SecurityTestRun | { dispatched: 'render-workflows'; taskRunId: string }>(
+      `${m(id)}/security-runs`,
+    ),
+  );
 export const useUpdateMission = (id: string) =>
   useMissionMutation(id, (v: { expectedVersion: number; mission: MissionInput }) =>
     api.put<Mission>(m(id), v),

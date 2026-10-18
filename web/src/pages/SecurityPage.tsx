@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { MARKET_EVENT_INFO, MARKET_EVENTS, type MarketEventKind } from '../../../shared/contracts';
 import {
@@ -17,7 +17,13 @@ export function SecurityPage() {
   const { missionId } = useParams();
   const id = missionId!;
   const mq = useMission(id);
-  const runs = useSecurityRuns(id);
+  // While a suite runs on Render Workflows, poll until its result lands in the database.
+  const [awaitingRun, setAwaitingRun] = useState<string | null>(null);
+  const runs = useSecurityRuns(id, awaitingRun ? 3000 : false);
+  const latestRunId = runs.data?.[0]?.id;
+  useEffect(() => {
+    if (awaitingRun && latestRunId && latestRunId !== awaitingRun) setAwaitingRun(null);
+  }, [awaitingRun, latestRunId]);
   const catalog = useSecurityCatalog();
   const drill = useMarketEvent(id);
   const suite = useRunSecuritySuite(id);
@@ -141,14 +147,20 @@ export function SecurityPage() {
         actions={
           <Button
             variant="primary"
-            loading={suite.isPending}
+            loading={suite.isPending || !!awaitingRun}
             onClick={() =>
               suite.mutate(undefined, {
-                onSuccess: (r) =>
+                onSuccess: (r) => {
+                  if ('dispatched' in r) {
+                    setAwaitingRun(runs.data?.[0]?.id ?? 'none');
+                    toast('info', `Suite dispatched to Render Workflows (task run ${r.taskRunId})`);
+                    return;
+                  }
                   toast(
                     r.failed === 0 ? 'ok' : 'danger',
                     `${r.passed}/${r.results.length} scenarios enforced`,
-                  ),
+                  );
+                },
                 onError: (e) => toast('danger', errorText(e)),
               })
             }
