@@ -1,6 +1,8 @@
+import { loadDotEnv } from './env.js';
 import { loadConfig } from './config.js';
 import { buildServer } from './bootstrap.js';
 
+loadDotEnv();
 const config = loadConfig();
 const { app, db, log, jobs, deps } = await buildServer(config);
 

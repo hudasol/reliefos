@@ -1,5 +1,6 @@
 import { task, type TaskContext } from '@renderinc/sdk/workflows';
 import { loadConfig } from '../config.js';
+import { loadDotEnv } from '../env.js';
 import { buildDeps } from '../bootstrap.js';
 import { reconcileSweep, runSecuritySuiteJob } from '../jobs/jobs.js';
 
@@ -9,6 +10,7 @@ import { reconcileSweep, runSecuritySuiteJob } from '../jobs/jobs.js';
 // retried task resumes from persisted state; reconciliation reuses the original PayPal-Request-Ids
 // and therefore cannot create a second order or capture.
 
+loadDotEnv();
 const { deps } = await buildDeps(loadConfig());
 
 task(

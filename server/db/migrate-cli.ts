@@ -1,7 +1,9 @@
 import { loadConfig } from '../config.js';
+import { loadDotEnv } from '../env.js';
 import { openDatabase } from './database.js';
 import { migrate } from './migrations.js';
 
+loadDotEnv();
 const config = loadConfig();
 const db = await openDatabase({
   databaseUrl: config.databaseUrl,
