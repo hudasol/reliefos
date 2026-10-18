@@ -329,6 +329,7 @@ code,
 }
 .panel-body.flush {
   padding: 0;
+  overflow-x: auto;
 }
 
 .grid {
@@ -1005,6 +1006,13 @@ textarea.input {
   }
   .content {
     padding: 16px;
+  }
+  .page-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .nav-item.active::before {
+    display: none;
   }
   .topbar {
     padding: 12px 16px;
