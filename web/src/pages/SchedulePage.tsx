@@ -38,12 +38,11 @@ export default function SchedulePage() {
     const tasks = sq.data.tasks.filter((t) =>
       showSuperseded ? true : t.proposalId === activeId || t.status === 'CONFIRMED',
     );
-    const resourceNames = [...new Set(tasks.map((t) => t.resource))]
-      .sort(
-        (a, b) =>
-          Number(a.startsWith('Supplier')) - Number(b.startsWith('Supplier')) || a.localeCompare(b),
-      )
-      .reverse();
+    // Supplier lanes first (alphabetical), then shelter intake, then distribution.
+    const rank = (n: string) => (n.startsWith('Supplier') ? 0 : n.endsWith('intake') ? 1 : 2);
+    const resourceNames = [...new Set(tasks.map((t) => t.resource))].sort(
+      (a, b) => rank(a) - rank(b) || a.localeCompare(b),
+    );
     const resources = resourceNames.map((name) => ({
       id: name,
       name,
@@ -85,7 +84,8 @@ export default function SchedulePage() {
       },
       {
         id: 'cutoff',
-        name: 'Intake cutoff',
+        // Unlabelled to avoid colliding with the deadline label; explained in the panel legend.
+        name: '',
         startDate: new Date(deadline.getTime() - INTAKE_BUFFER_MIN * 60_000),
         cls: 'rlf-cutoff',
       },
@@ -155,7 +155,17 @@ export default function SchedulePage() {
               <Panel
                 title={`${s.destination} resupply`}
                 sub={`Times in ${s.timezone}`}
-                actions={<SimTag label="Simulated supplier ETAs" />}
+                actions={
+                  <span className="row small text-2">
+                    <span style={{ borderLeft: '2px dashed #9a5b0c', height: 12 }} /> intake cutoff
+                    (30 min)
+                    <span
+                      style={{ borderLeft: '2px solid #b1261b', height: 12, marginLeft: 8 }}
+                    />{' '}
+                    deadline
+                    <SimTag label="Simulated supplier ETAs" />
+                  </span>
+                }
                 flush
               >
                 <div className="scheduler-frame">
@@ -169,10 +179,7 @@ export default function SchedulePage() {
                     barMargin={8}
                     eventStyle="rounded"
                     zoomOnMouseWheel={false}
-                    columns={[
-                      { text: 'Lane', field: 'name', width: 260 },
-                      { text: 'Type', field: 'kind', width: 140 },
-                    ]}
+                    columns={[{ text: 'Lane', field: 'name', width: 230 }]}
                     resources={model.resources}
                     events={model.events}
                     dependencies={model.dependencies}

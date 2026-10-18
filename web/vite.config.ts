@@ -11,6 +11,9 @@ export default defineConfig({
     port: 5173,
     proxy: { '/api': 'http://localhost:8080' },
   },
+  // The unminified Bryntum trial bundle crashes the dev dependency optimizer on Windows; it is
+  // already a single ESM module, so it is served as-is instead of being pre-bundled.
+  optimizeDeps: { exclude: ['@bryntum/scheduler', '@bryntum/scheduler-react'] },
   build: {
     outDir: fileURLToPath(new URL('../dist/web', import.meta.url)),
     emptyOutDir: true,
@@ -19,7 +22,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id: string) {
-          if (id.includes('ag-studio') || id.includes('ag-grid') || id.includes('ag-charts')) return 'ag';
+          if (id.includes('ag-studio') || id.includes('ag-grid') || id.includes('ag-charts'))
+            return 'ag';
           if (id.includes('@bryntum')) return 'bryntum';
           if (id.includes('node_modules')) return 'vendor';
           return undefined;
