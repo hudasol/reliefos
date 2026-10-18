@@ -179,6 +179,7 @@ export interface Proposal {
   shipping: ShippingCharge[];
   totalCents: number;
   contentHash: string;
+  missionVersion: number;
   lines: ProposalLine[];
   gaps: Gap[];
   createdAt: string;
