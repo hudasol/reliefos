@@ -189,6 +189,30 @@ async function injectAdversarialListing(s: Store, deps: Deps, workspaceId: strin
         eta: quotes.get(candidate.id)!.eta,
       },
     ]);
+  const { proposal, decision } = await submitCraftedProposal(s, deps, workspaceId, missionId, base, lines, {
+    createdBy: 'simulated-compromised-agent',
+    rationale: 'SIMULATED: output a buyer agent would produce if it obeyed the injected listing.',
+  });
+  changed.push(`Compromised-agent proposal v${proposal.version} (500 blankets) submitted to the gate: ${decision.outcome}`);
+}
+
+/**
+ * Persist a deliberately constructed proposal (adversarial drill or Security Lab attack) and judge it
+ * with the real validation gate. Totals are computed honestly from the lines; the attack is in the
+ * lines themselves. The open proposal it replaces is retired first.
+ */
+export async function submitCraftedProposal(
+  s: Store,
+  deps: Deps,
+  workspaceId: string,
+  missionId: string,
+  base: Proposal,
+  lines: Proposal['lines'],
+  opts: { createdBy: string; rationale: string },
+): Promise<{ proposal: Proposal; decision: PolicyDecision }> {
+  const now = deps.now();
+  const mission = await s.getMission(workspaceId, missionId, true);
+  const quotes = await s.currentQuotes(missionId);
   const shipping = computeShipping(
     lines.map((l) => {
       const q = quotes.get(l.candidateId);
@@ -204,10 +228,10 @@ async function injectAdversarialListing(s: Store, deps: Deps, workspaceId: strin
     version,
     status: 'DRAFT',
     parentProposalId: base.id,
-    createdBy: 'simulated-compromised-agent',
+    createdBy: opts.createdBy,
     plannerMode: 'deterministic',
-    rationale: 'SIMULATED: output a buyer agent would produce if it obeyed the injected listing.',
-    tradeoffs: ['Adversarial drill — this proposal was constructed to test the policy gate.'],
+    rationale: opts.rationale,
+    tradeoffs: ['Adversarial test — this proposal was constructed to test the policy gate.'],
     lines,
     shipping,
     subtotalCents,
@@ -231,10 +255,10 @@ async function injectAdversarialListing(s: Store, deps: Deps, workspaceId: strin
     totalCents: proposal.totalCents,
   });
   await s.insertProposal(proposal);
-  // Supersede the open proposal so the compromised one is what the gate judges.
-  if (['AWAITING_APPROVAL', 'APPROVED', 'VALIDATED'].includes(base.status)) {
-    await s.invalidateApprovals({ missionId, proposalId: base.id }, 'Superseded by adversarial drill');
-    await s.setProposalStatus(base.id, base.status, 'INVALIDATED');
+  const current = await s.getProposal(missionId, base.id);
+  if (['AWAITING_APPROVAL', 'APPROVED', 'VALIDATED'].includes(current.status)) {
+    await s.invalidateApprovals({ missionId, proposalId: base.id }, `Superseded by ${opts.createdBy} proposal v${version}`);
+    await s.setProposalStatus(base.id, current.status, 'INVALIDATED');
   }
   const ctx = await loadPolicyContext(s, mission, proposal, 'validation', { now });
   const decision = await evaluateAndRecord(s, ctx);
@@ -248,9 +272,9 @@ async function injectAdversarialListing(s: Store, deps: Deps, workspaceId: strin
     actor: 'policy:deadman',
     summary:
       decision.outcome === 'DENY'
-        ? `Compromised-agent proposal v${version} rejected: ${decision.violations.map((v) => v.checkId).join(', ')}`
-        : `WARNING: compromised-agent proposal v${version} was not rejected`,
+        ? `${opts.createdBy} proposal v${version} rejected: ${decision.violations.map((v) => v.checkId).join(', ')}`
+        : `WARNING: ${opts.createdBy} proposal v${version} was not rejected`,
     data: { decisionId: decision.id, violations: decision.violations },
   });
-  changed.push(`Compromised-agent proposal v${version} (500 blankets) submitted to the gate: ${decision.outcome}`);
+  return { proposal: { ...proposal, status: decision.outcome === 'ALLOW' ? 'VALIDATED' : 'REJECTED', latestDecision: decision }, decision };
 }
