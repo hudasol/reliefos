@@ -89,6 +89,19 @@ export function selectDeterministically(input: SelectionInput): Selection {
 
 const money = (c: number) => `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+/** Collapse repeated warnings of the same kind into one readable point. */
+function summariseWarnings(warnings: ExplanationInput['warnings']): string[] {
+  const byCheck = new Map<string, string[]>();
+  for (const w of warnings) byCheck.set(w.checkId, [...(byCheck.get(w.checkId) ?? []), w.message]);
+  const out: string[] = [];
+  for (const [check, msgs] of byCheck) {
+    if (check === 'NON_LIVE_DATA') out.push(`${msgs.length} line(s) use labelled fixture or simulated data, not live Channel3 results.`);
+    else if (msgs.length > 2) out.push(`${msgs[0]} (+${msgs.length - 1} similar)`);
+    else out.push(...msgs);
+  }
+  return out;
+}
+
 export function explainDeterministically(input: ExplanationInput): Explanation {
   if (input.kind === 'rejection') {
     return {
@@ -106,7 +119,7 @@ export function explainDeterministically(input: ExplanationInput): Explanation {
   }
   return {
     headline: `Proposal totals ${money(input.totalCents)} of ${money(input.budgetCents)} and passed every hard policy check.`,
-    points: [...input.warnings.map((w) => w.message), ...input.gaps.map((g) => `Gap: ${g.label} short by ${g.shortfallUnits} (${g.reason}).`)],
+    points: [...summariseWarnings(input.warnings), ...input.gaps.map((g) => `Gap: ${g.label} short by ${g.shortfallUnits} (${g.reason}).`)],
     nextStep: 'Review and approve to proceed to PayPal.',
   };
 }

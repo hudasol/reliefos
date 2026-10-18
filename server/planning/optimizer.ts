@@ -141,15 +141,22 @@ export function optimizePlan(input: PlanInput): PlanResult {
     let remaining = req.quantity - (input.purchasedUnits[req.id] ?? 0);
     if (remaining <= 0) continue;
     const preferred = input.preferred?.[req.id] ?? [];
-    const opts = [...(eligibleByReq.get(req.id) ?? [])].sort((a, b) => {
-      const pa = preferred.indexOf(a.candidate.id);
-      const pb = preferred.indexOf(b.candidate.id);
-      if (pa !== pb) return (pa === -1 ? Infinity : pa) - (pb === -1 ? Infinity : pb);
-      return costPerUnit(a) - costPerUnit(b) || a.candidate.id.localeCompare(b.candidate.id);
-    });
+    const pool = [...(eligibleByReq.get(req.id) ?? [])];
+    // Effective cost of covering what is still needed with an option: pack rounding waste counts,
+    // so a cheaper-per-unit bulk pack that overshoots the need does not win by default. The buyer
+    // agent's ranking nudges the score by 5% per rank position; it cannot override cost by much.
+    const score = (opt: PlanOption, need: number) => {
+      const per = opt.candidate.pack.unitsPerPack!;
+      const packs = Math.min(opt.quote!.stockPacks, Math.ceil(need / per));
+      const useful = Math.min(need, Math.floor(packs * per));
+      const rank = preferred.indexOf(opt.candidate.id);
+      const nudge = 1 + 0.05 * (rank === -1 ? preferred.length : rank);
+      return useful > 0 ? ((packs * (opt.quote!.unitPriceCents + opt.quote!.shippingPerPackCents)) / useful) * nudge : Infinity;
+    };
     let suppliers = 0;
-    for (const opt of opts) {
-      if (remaining <= 0 || suppliers >= 3) break;
+    while (remaining > 0 && suppliers < 3 && pool.length > 0) {
+      pool.sort((a, b) => score(a, remaining) - score(b, remaining) || costPerUnit(a) - costPerUnit(b) || a.candidate.id.localeCompare(b.candidate.id));
+      const opt = pool.shift()!;
       const per = opt.candidate.pack.unitsPerPack!;
       const q = opt.quote!;
       const packs = Math.min(q.stockPacks, Math.ceil(remaining / per));
