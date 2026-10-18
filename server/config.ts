@@ -13,6 +13,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(8080),
   PUBLIC_BASE_URL: optionalString,
+  RENDER_EXTERNAL_URL: optionalString,
   DATABASE_URL: optionalString,
   PGLITE_DATA_DIR: optionalString,
   SESSION_SECRET: optionalString,
@@ -45,7 +46,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   return {
     env: parsed.NODE_ENV,
     port: parsed.PORT,
-    publicBaseUrl: parsed.PUBLIC_BASE_URL ?? null,
+    publicBaseUrl: parsed.PUBLIC_BASE_URL ?? parsed.RENDER_EXTERNAL_URL ?? null,
     databaseUrl: parsed.DATABASE_URL ?? null,
     pgliteDataDir: parsed.PGLITE_DATA_DIR ?? null,
     sessionSecret: parsed.SESSION_SECRET ?? 'reliefos-dev-only-secret-do-not-use-in-production',
