@@ -405,7 +405,11 @@ export function createApp(opts: AppOptions) {
     h(async (req, res) => {
       const id = param(req, 'id');
       const mission = await store(deps).getMission(req.workspaceId!, id);
-      const run = { id: newId(), missionId: id, ...(await runSecuritySuite(deps.now())) };
+      const run = {
+        id: newId(),
+        missionId: id,
+        ...(await runSecuritySuite({ now: deps.now(), db: deps.db })),
+      };
       await deps.db.tx(async (q) => {
         const s = new Store(q);
         await s.insertSecurityRun(run);

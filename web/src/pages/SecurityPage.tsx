@@ -33,8 +33,8 @@ export function SecurityPage() {
           <p className="lede">
             DEADMAN is the independent policy gate between every AI proposal and PayPal. Drills
             attack this mission's live plan; the suite replays eight attack scenarios against the
-            real services in an isolated database. The adversary can find failures — it can never
-            grant permission.
+            real services in a throwaway sandbox workspace. The adversary can find failures — it can
+            never grant permission.
           </p>
         </div>
       </div>
@@ -137,7 +137,7 @@ export function SecurityPage() {
 
       <Panel
         title="DEADMAN adversarial suite"
-        sub="8 scenarios · isolated PGlite database · scripted PayPal double for timeouts"
+        sub="8 scenarios · sandbox workspace per scenario · fixed seed · scripted PayPal double for timeouts"
         actions={
           <Button
             variant="primary"

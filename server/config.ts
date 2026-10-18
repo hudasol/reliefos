@@ -40,6 +40,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     // This project is a hackathon build. Refuse to move real money.
     throw new Error('PAYPAL_ENVIRONMENT=live is not supported by RELIEFOS. Use sandbox.');
   }
+  if (parsed.NODE_ENV === 'production' && !parsed.DATABASE_URL) {
+    // Embedded PGlite reserves ~600 MB of memory and keeps data on an ephemeral disk: unsuitable
+    // for a hosted deployment. Fail loudly instead of crash-looping out of memory.
+    throw new Error(
+      'DATABASE_URL is required in production (link the Render Postgres internal URL).',
+    );
+  }
   if (parsed.NODE_ENV === 'production' && !parsed.SESSION_SECRET) {
     throw new Error('SESSION_SECRET is required in production.');
   }

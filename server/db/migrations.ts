@@ -281,6 +281,25 @@ CREATE TRIGGER audit_events_no_update BEFORE UPDATE OR DELETE ON audit_events
   FOR EACH ROW EXECUTE FUNCTION audit_events_immutable();
 `,
   },
+  {
+    // Make a workspace (and everything it owns) deletable in one statement. Needed to clean up
+    // Security Lab sandboxes; audit_events deliberately keep no foreign keys and remain append-only.
+    id: '0002_cascading_ownership',
+    sql: `
+ALTER TABLE proposal_lines DROP CONSTRAINT proposal_lines_requirement_id_fkey,
+  ADD CONSTRAINT proposal_lines_requirement_id_fkey FOREIGN KEY (requirement_id) REFERENCES requirements(id) ON DELETE CASCADE;
+ALTER TABLE proposal_lines DROP CONSTRAINT proposal_lines_candidate_id_fkey,
+  ADD CONSTRAINT proposal_lines_candidate_id_fkey FOREIGN KEY (candidate_id) REFERENCES product_candidates(id) ON DELETE CASCADE;
+ALTER TABLE proposal_lines DROP CONSTRAINT proposal_lines_quote_id_fkey,
+  ADD CONSTRAINT proposal_lines_quote_id_fkey FOREIGN KEY (quote_id) REFERENCES fulfillment_quotes(id) ON DELETE CASCADE;
+ALTER TABLE proposals DROP CONSTRAINT proposals_parent_proposal_id_fkey,
+  ADD CONSTRAINT proposals_parent_proposal_id_fkey FOREIGN KEY (parent_proposal_id) REFERENCES proposals(id) ON DELETE SET NULL;
+ALTER TABLE payment_operations DROP CONSTRAINT payment_operations_proposal_id_fkey,
+  ADD CONSTRAINT payment_operations_proposal_id_fkey FOREIGN KEY (proposal_id) REFERENCES proposals(id) ON DELETE CASCADE;
+ALTER TABLE payment_operations DROP CONSTRAINT payment_operations_approval_id_fkey,
+  ADD CONSTRAINT payment_operations_approval_id_fkey FOREIGN KEY (approval_id) REFERENCES approvals(id) ON DELETE CASCADE;
+`,
+  },
 ];
 
 export async function migrate(db: Database): Promise<string[]> {

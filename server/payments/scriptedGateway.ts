@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { CreateOrderInput, GatewayOrder, GatewayResult, PaymentGateway } from './gateway.js';
 
 // A scripted, in-memory stand-in for PayPal Orders v2. Used ONLY by the isolated Security Lab and the
@@ -25,6 +26,7 @@ export class ScriptedGateway implements PaymentGateway {
   readonly calls: { op: string; orderId?: string; requestId?: string }[] = [];
   private faults: ScriptedFault[] = [];
   private seq = 0;
+  private readonly prefix = randomUUID().slice(0, 8).toUpperCase();
 
   /** Queue a fault for the next call of the given operation. */
   inject(fault: ScriptedFault) {
@@ -58,7 +60,7 @@ export class ScriptedGateway implements PaymentGateway {
       return { kind: 'ambiguous', reason: 'scripted timeout before PayPal received the request' };
     const prior = this.requestIds.get(`create:${input.requestId}`);
     if (prior) return prior;
-    const id = `SCRIPTED-${String(++this.seq).padStart(6, '0')}`;
+    const id = `SCRIPTED-${this.prefix}-${String(++this.seq).padStart(4, '0')}`;
     const order: GatewayOrder = {
       id,
       status: 'PAYER_ACTION_REQUIRED',

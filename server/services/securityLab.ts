@@ -1,10 +1,9 @@
-import { createHash } from 'node:crypto';
 import type {
   SecurityScenarioId,
   SecurityScenarioResult,
   SecurityTestRun,
 } from '../../shared/types.js';
-import { openDatabase } from '../db/database.js';
+import { openDatabase, type Database } from '../db/database.js';
 import { migrate } from '../db/migrations.js';
 import { DeterministicAgent } from '../ai/deterministic.js';
 import { FixtureSource } from '../catalog/fixtures.js';
@@ -19,23 +18,21 @@ import { capturePayment, createPayment, reconcilePayment } from './payments.js';
 import { planMission } from './planning.js';
 
 // DEADMAN Security Lab. Each scenario runs the REAL services, policy engine and payment state machine
-// in an isolated in-memory PostgreSQL (PGlite) database, against a scripted PayPal double that can
-// reproduce timeouts and ambiguous responses on demand. A scenario passes only when the enforcement
-// behaviour is actually observed in persisted state — never because a model said so.
+// in its own throwaway sandbox workspace (deleted afterwards), against a scripted PayPal double that
+// can reproduce timeouts and ambiguous responses on demand. Simulated supplier commitments use a fixed
+// seed, so every run sees identical inputs. A scenario passes only when the enforcement behaviour is
+// actually observed in persisted state — never because a model said so.
 
 export const SUITE_VERSION = 'deadman-suite-1.0.0';
 
 interface Lab {
-  seed: string;
   deps: Deps;
   gateway: ScriptedGateway;
   store: Store;
   workspaceId: string;
 }
 
-async function openLab(now: Date, seed: string): Promise<Lab> {
-  const db = await openDatabase({ databaseUrl: null, pgliteDataDir: null });
-  await migrate(db);
+async function openLab(db: Database, now: Date): Promise<Lab> {
   const gateway = new ScriptedGateway();
   const deps: Deps = {
     db,
@@ -55,14 +52,8 @@ async function openLab(now: Date, seed: string): Promise<Lab> {
   };
   const workspaceId = newId();
   const store = new Store(db);
-  await store.createWorkspace(workspaceId, 'security-lab');
-  return { seed, deps, gateway, store, workspaceId };
-}
-
-/** Deterministic UUID so every run seeds identical simulated supplier commitments. */
-function labMissionId(seed: string): string {
-  const h = createHash('sha256').update(`reliefos-security-lab:${seed}`).digest('hex');
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
+  await store.createWorkspace(workspaceId, 'security-lab sandbox');
+  return { deps, gateway, store, workspaceId };
 }
 
 async function freshMission(
@@ -77,7 +68,6 @@ async function freshMission(
   const mission = await createMission(lab.deps, lab.workspaceId, input, {
     scenarioKey: 'security-lab',
     actor: 'security-lab',
-    id: labMissionId(lab.seed),
   });
   const plan = await planMission(lab.deps, lab.workspaceId, mission.id, { actor: 'security-lab' });
   return { mission, input, plan };
@@ -538,15 +528,24 @@ export const SECURITY_SCENARIOS = SCENARIOS.map(({ id, title, attack, expected }
   expected,
 }));
 
-export async function runSecuritySuite(
-  now: Date,
-  only?: SecurityScenarioId[],
-): Promise<Omit<SecurityTestRun, 'id' | 'missionId'>> {
+/**
+ * Run the suite. With `db` (the application database) each scenario uses a sandbox workspace that is
+ * deleted afterwards; without it, a private in-memory PGlite database is created for the run.
+ */
+export async function runSecuritySuite(opts: {
+  now: Date;
+  db?: Database;
+  only?: SecurityScenarioId[];
+}): Promise<Omit<SecurityTestRun, 'id' | 'missionId'>> {
+  const { now, only } = opts;
+  const ownDb = !opts.db;
+  const db = opts.db ?? (await openDatabase({ databaseUrl: null, pgliteDataDir: null }));
+  if (ownDb) await migrate(db);
   const startedAt = new Date();
   const results: SecurityScenarioResult[] = [];
   for (const sc of SCENARIOS.filter((s) => !only || only.includes(s.id))) {
     const t0 = Date.now();
-    const lab = await openLab(now, sc.id);
+    const lab = await openLab(db, now);
     try {
       const r = await sc.run(lab);
       results.push({
@@ -572,9 +571,14 @@ export async function runSecuritySuite(
         durationMs: Date.now() - t0,
       });
     } finally {
-      await lab.deps.db.close();
+      // Missions, proposals and payments cascade with the workspace; the append-only audit rows of
+      // the sandbox remain, scoped to a workspace no session can reach.
+      await db
+        .query('DELETE FROM workspaces WHERE id = $1', [lab.workspaceId])
+        .catch((e: Error) => console.error('security-lab cleanup failed:', e.message));
     }
   }
+  if (ownDb) await db.close();
   return {
     suiteVersion: SUITE_VERSION,
     startedAt: startedAt.toISOString(),
