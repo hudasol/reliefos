@@ -43,3 +43,10 @@ export function isValidTimeZone(tz: string): boolean {
     return false;
   }
 }
+
+/** "4:40 PM EDT" in the given zone; falls back to ISO when no zone is known. */
+export function localTime(instant: Date | string, timeZone: string | undefined): string {
+  const d = typeof instant === 'string' ? new Date(instant) : instant;
+  if (!timeZone) return d.toISOString();
+  return new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d);
+}

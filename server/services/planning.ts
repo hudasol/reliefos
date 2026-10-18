@@ -101,7 +101,8 @@ async function retrieveCandidates(deps: Deps, workspaceId: string, mission: Miss
     for (const c of saved) {
       if (quotes.has(c.id) || c.priceCents === null || !c.pack.unitsPerPack || !c.merchantDomain) continue;
       const q = simulateQuote({
-        missionId: mission.id,
+        // Scenario missions share a seed so the rehearsed demo sees identical simulated commitments.
+        missionId: mission.scenarioKey ? `scenario:${mission.scenarioKey}` : mission.id,
         sourceProductId: c.sourceProductId,
         merchantDomain: c.merchantDomain,
         category: req.category,
@@ -288,7 +289,7 @@ export async function planMission(
     const agent = agentFor(deps, mission);
     const eligible: Record<string, SelectionOption[]> = {};
     for (const o of options) {
-      if (eligibilityReasons(o, deadline).length > 0) continue;
+      if (eligibilityReasons(o, deadline, mission.timezone).length > 0) continue;
       const req = requirements.find((r) => r.id === o.candidate.requirementId)!;
       (eligible[req.id] ??= []).push({
         candidateId: o.candidate.id,
@@ -343,6 +344,7 @@ export async function planMission(
       budgetCents: mission.budgetCents,
       committedCents: commitments.committedCents,
       deadline,
+      timeZone: mission.timezone,
       purchasedUnits: commitments.purchasedUnits,
       preferred,
     });

@@ -1,3 +1,4 @@
+import { localTime } from '../../shared/time.js';
 import type { FulfillmentQuote, Gap, Priority, ProductCandidate, Requirement, ShippingCharge } from '../../shared/types.js';
 
 // Deterministic procurement optimizer. It enforces hard constraints before it optimises anything:
@@ -18,6 +19,7 @@ export interface PlanInput {
   /** Spend already committed by earlier executed proposals of this mission. */
   committedCents: number;
   deadline: Date;
+  timeZone?: string;
   /** Units already purchased per requirement by earlier executed proposals. */
   purchasedUnits: Record<string, number>;
   /** Buyer-agent preference: candidate ids to try first, per requirement. Still fully validated. */
@@ -64,7 +66,7 @@ export interface PlanResult {
 
 const PRIORITY_ORDER: Record<Priority, number> = { critical: 0, high: 1, standard: 2 };
 
-export function eligibilityReasons(opt: PlanOption, deadline: Date): string[] {
+export function eligibilityReasons(opt: PlanOption, deadline: Date, timeZone?: string): string[] {
   const { candidate: c, quote: q } = opt;
   const reasons: string[] = [];
   if (c.quarantined) reasons.push('Quarantined: listing content attempted to instruct the purchasing agent');
@@ -79,7 +81,7 @@ export function eligibilityReasons(opt: PlanOption, deadline: Date): string[] {
     if (q.stockPacks <= 0) reasons.push('Supplier reports no stock');
     const latest = deadline.getTime() - INTAKE_BUFFER_MINUTES * 60_000;
     if (new Date(q.eta).getTime() > latest) {
-      reasons.push(`Delivery ETA ${q.eta} misses the deadline (incl. ${INTAKE_BUFFER_MINUTES} min intake buffer)`);
+      reasons.push(`Delivery ETA ${localTime(q.eta, timeZone)} misses the ${localTime(new Date(latest), timeZone)} intake cutoff (${INTAKE_BUFFER_MINUTES} min before the deadline)`);
     }
   }
   return reasons;
@@ -125,7 +127,7 @@ export function optimizePlan(input: PlanInput): PlanResult {
 
   const eligibleByReq = new Map<string, PlanOption[]>();
   for (const opt of input.options) {
-    const reasons = eligibilityReasons(opt, input.deadline);
+    const reasons = eligibilityReasons(opt, input.deadline, input.timeZone);
     if (input.excludedCandidateIds?.has(opt.candidate.id)) reasons.push('Excluded by recovery decision');
     if (reasons.length > 0) {
       exclusions.push({ candidateId: opt.candidate.id, requirementId: opt.candidate.requirementId, title: opt.candidate.title, reasons });

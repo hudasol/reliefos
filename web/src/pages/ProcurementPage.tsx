@@ -256,7 +256,7 @@ export function ProcurementPage() {
 
                   <div className="stack" style={{ gap: 18 }}>
                     <Panel title="Policy gate" sub="DEADMAN · deterministic">
-                      {p.latestDecision ? <PolicyVerdict decision={p.latestDecision} timeZone={mission.timezone} /> : <span className="muted">Not evaluated.</span>}
+                      {p.latestDecision ? <PolicyVerdict key={p.latestDecision.id} decision={p.latestDecision} timeZone={mission.timezone} /> : <span className="muted">Not evaluated.</span>}
                     </Panel>
                     {expl && (
                       <Panel title="Explanation" actions={<Badge tone={expl.run.mode === 'claude' ? 'accent' : 'neutral'}>{expl.run.mode === 'claude' ? `Claude · ${expl.run.model}` : 'Deterministic'}</Badge>}>

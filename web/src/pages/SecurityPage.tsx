@@ -77,7 +77,7 @@ export function SecurityPage() {
                     ))}
                   </ul>
                   {last.revalidated ? (
-                    <PolicyVerdict decision={last.revalidated.decision} timeZone={d.mission.timezone} />
+                    <PolicyVerdict key={last.revalidated.decision.id} decision={last.revalidated.decision} timeZone={d.mission.timezone} />
                   ) : (
                     <div className="small muted">See Procurement for the compromised proposal and its rejection.</div>
                   )}

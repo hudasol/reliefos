@@ -15,6 +15,7 @@ import { checkSpec, parseAttributes } from '../catalog/evidence.js';
 import { isBlocking, scanContent } from '../catalog/contentSecurity.js';
 import { computeShipping, INTAKE_BUFFER_MINUTES, type PlannedLine } from '../planning/optimizer.js';
 import { materialTermsHash } from '../planning/hash.js';
+import { localTime } from '../../shared/time.js';
 
 // DEADMAN — the deterministic policy gate. It is the only component that can permit a payment
 // operation. It never consults a language model and never trusts values the planner computed: every
@@ -34,6 +35,8 @@ export interface PolicyContext {
     budgetCents: number;
     currency: string;
     deadline: string;
+    /** IANA zone used only to format human-readable messages. */
+    timezone?: string;
   };
   requirements: Requirement[];
   proposal: Proposal;
@@ -394,7 +397,7 @@ const CHECKS: CheckDef[] = [
         const eta = new Date(q?.eta ?? l.eta).getTime();
         if (eta > latest) {
           out.push(
-            v('DELIVERY_DEADLINE', `"${l.title}" ETA ${new Date(eta).toISOString()} misses the ${new Date(latest).toISOString()} intake cutoff`, l.id, {
+            v('DELIVERY_DEADLINE', `"${l.title}" now arrives ${localTime(new Date(eta), ctx.mission.timezone)}, after the ${localTime(new Date(latest), ctx.mission.timezone)} intake cutoff`, l.id, {
               eta: new Date(eta).toISOString(),
               deadline: ctx.mission.deadline,
               intakeBufferMinutes: INTAKE_BUFFER_MINUTES,

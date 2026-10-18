@@ -22,7 +22,7 @@ export async function candidateViews(deps: Deps, workspaceId: string, missionId:
   const deadline = new Date(mission.deadline);
   return candidates.map((c) => {
     const quote = quotes.get(c.id) ?? null;
-    const reasons = eligibilityReasons({ candidate: c, quote }, deadline);
+    const reasons = eligibilityReasons({ candidate: c, quote }, deadline, mission.timezone);
     return {
       ...c,
       quote,

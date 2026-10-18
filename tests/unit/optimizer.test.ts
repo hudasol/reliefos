@@ -47,7 +47,7 @@ describe('procurement optimizer', () => {
     expect(plan.lines.map((l) => l.candidateId)).not.toContain('c-injected');
     expect(plan.lines.map((l) => l.candidateId)).not.toContain('c-late');
     expect(plan.exclusions.find((e) => e.candidateId === 'c-injected')!.reasons.join(' ')).toMatch(/Quarantined/);
-    expect(plan.exclusions.find((e) => e.candidateId === 'c-late')!.reasons.join(' ')).toMatch(/misses the deadline/);
+    expect(plan.exclusions.find((e) => e.candidateId === 'c-late')!.reasons.join(' ')).toMatch(/misses the .* intake cutoff/);
   });
 
   it('splits across suppliers when one cannot cover the full quantity', () => {

@@ -5,6 +5,7 @@ import { isBlocking, scanContent } from '../catalog/contentSecurity.js';
 import { checkSpec, parseAttributes, parsePack } from '../catalog/evidence.js';
 import { illegalState } from '../domain/errors.js';
 import { materialTermsHash } from '../planning/hash.js';
+import { localTime } from '../../shared/time.js';
 import { computeShipping } from '../planning/optimizer.js';
 import type { Store } from '../repo/store.js';
 import { pickActiveProposal } from './missions.js';
@@ -83,7 +84,7 @@ export async function runMarketEvent(deps: Deps, workspaceId: string, missionId:
       const line = proposal.lines.find((l) => critical.has(l.requirementId)) ?? proposal.lines[0]!;
       const eta = new Date(new Date(mission.deadline).getTime() + 40 * 60_000).toISOString();
       await supersede(line.candidateId, { eta }, 'carrier delay pushed ETA past the deadline');
-      changed.push(`Courier for "${line.title}" (${line.merchantDomain}) now arrives ${eta}, after the deadline`);
+      changed.push(`Courier for "${line.title}" (${line.merchantDomain}) now arrives ${localTime(eta, mission.timezone)}, after the ${localTime(mission.deadline, mission.timezone)} deadline`);
     } else if (kind === 'shipping-surge') {
       const merchant = proposal.lines[0]!.merchantDomain;
       for (const l of proposal.lines.filter((x) => x.merchantDomain === merchant)) {

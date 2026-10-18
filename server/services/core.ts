@@ -63,7 +63,7 @@ export async function loadPolicyContext(
   return {
     stage,
     now: extras.now,
-    mission: { id: mission.id, status: mission.status, version: mission.version, budgetCents: mission.budgetCents, currency: mission.currency, deadline: mission.deadline },
+    mission: { id: mission.id, status: mission.status, version: mission.version, budgetCents: mission.budgetCents, currency: mission.currency, deadline: mission.deadline, timezone: mission.timezone },
     requirements,
     proposal,
     candidates: new Map(candidates.map((c) => [c.id, c])),

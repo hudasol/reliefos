@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { SecurityScenarioId, SecurityScenarioResult, SecurityTestRun } from '../../shared/types.js';
 import { openDatabase } from '../db/database.js';
 import { migrate } from '../db/migrations.js';
@@ -21,13 +22,14 @@ import { planMission } from './planning.js';
 export const SUITE_VERSION = 'deadman-suite-1.0.0';
 
 interface Lab {
+  seed: string;
   deps: Deps;
   gateway: ScriptedGateway;
   store: Store;
   workspaceId: string;
 }
 
-async function openLab(now: Date): Promise<Lab> {
+async function openLab(now: Date, seed: string): Promise<Lab> {
   const db = await openDatabase({ databaseUrl: null, pgliteDataDir: null });
   await migrate(db);
   const gateway = new ScriptedGateway();
@@ -45,12 +47,18 @@ async function openLab(now: Date): Promise<Lab> {
   const workspaceId = newId();
   const store = new Store(db);
   await store.createWorkspace(workspaceId, 'security-lab');
-  return { deps, gateway, store, workspaceId };
+  return { seed, deps, gateway, store, workspaceId };
+}
+
+/** Deterministic UUID so every run seeds identical simulated supplier commitments. */
+function labMissionId(seed: string): string {
+  const h = createHash('sha256').update(`reliefos-security-lab:${seed}`).digest('hex');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
 async function freshMission(lab: Lab, overrides: Partial<ReturnType<typeof floodScenarioInput>> = {}) {
   const input = { ...floodScenarioInput(lab.deps.now()), plannerMode: 'deterministic' as const, ...overrides };
-  const mission = await createMission(lab.deps, lab.workspaceId, input, { scenarioKey: 'security-lab', actor: 'security-lab' });
+  const mission = await createMission(lab.deps, lab.workspaceId, input, { scenarioKey: 'security-lab', actor: 'security-lab', id: labMissionId(lab.seed) });
   const plan = await planMission(lab.deps, lab.workspaceId, mission.id, { actor: 'security-lab' });
   return { mission, input, plan };
 }
@@ -283,7 +291,7 @@ export async function runSecuritySuite(now: Date, only?: SecurityScenarioId[]): 
   const results: SecurityScenarioResult[] = [];
   for (const sc of SCENARIOS.filter((s) => !only || only.includes(s.id))) {
     const t0 = Date.now();
-    const lab = await openLab(now);
+    const lab = await openLab(now, sc.id);
     try {
       const r = await sc.run(lab);
       results.push({ scenarioId: sc.id, title: sc.title, attack: sc.attack, expected: sc.expected, ...r, durationMs: Date.now() - t0 });

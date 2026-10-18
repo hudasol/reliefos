@@ -79,11 +79,11 @@ export async function interpretNarrative(deps: Deps, narrative: string, plannerM
   };
 }
 
-export async function createMission(deps: Deps, workspaceId: string, input: MissionInput, opts: { scenarioKey?: string | null; actor: string }): Promise<Mission> {
+export async function createMission(deps: Deps, workspaceId: string, input: MissionInput, opts: { scenarioKey?: string | null; actor: string; id?: string }): Promise<Mission> {
   const t = termsFromInput(input);
   const now = deps.now().toISOString();
   const mission: Mission = {
-    id: newId(),
+    id: opts.id ?? newId(),
     ...t,
     currency: 'USD',
     timezone: input.timezone,
