@@ -52,9 +52,28 @@ export interface SecurityCatalog {
 
 export interface AnalyticsData {
   asOf: string;
-  mission: { id: string; title: string; status: string; budget: number; deadline: string; catalogSource: string };
+  mission: {
+    id: string;
+    title: string;
+    status: string;
+    budget: number;
+    deadline: string;
+    catalogSource: string;
+  };
   summary: MissionSummary;
-  requirements: { id: string; requirement: string; category: string; priority: string; needed: number; unit: string; purchased: number; planned: number; gap: number; coveragePct: number; basis: string }[];
+  requirements: {
+    id: string;
+    requirement: string;
+    category: string;
+    priority: string;
+    needed: number;
+    unit: string;
+    purchased: number;
+    planned: number;
+    gap: number;
+    coveragePct: number;
+    basis: string;
+  }[];
   lines: {
     id: string;
     proposalId: string;
@@ -102,9 +121,40 @@ export interface AnalyticsData {
     buyUrl: string | null;
     imageUrl: string | null;
   }[];
-  checks: { id: string; decisionId: string; proposalVersion: number; stage: string; outcome: string; check: string; title: string; passed: boolean; hard: boolean; detail: string; evaluatedAt: string }[];
-  payments: { id: string; proposalVersion: number; status: string; amount: number; orderId: string | null; captureId: string | null; captureStatus: string | null; verified: boolean; updatedAt: string; error: string | null }[];
-  security: { id: string; scenario: string; passed: boolean; observed: string; enforcedBy: string; durationMs: number; runAt: string }[];
+  checks: {
+    id: string;
+    decisionId: string;
+    proposalVersion: number;
+    stage: string;
+    outcome: string;
+    check: string;
+    title: string;
+    passed: boolean;
+    hard: boolean;
+    detail: string;
+    evaluatedAt: string;
+  }[];
+  payments: {
+    id: string;
+    proposalVersion: number;
+    status: string;
+    amount: number;
+    orderId: string | null;
+    captureId: string | null;
+    captureStatus: string | null;
+    verified: boolean;
+    updatedAt: string;
+    error: string | null;
+  }[];
+  security: {
+    id: string;
+    scenario: string;
+    passed: boolean;
+    observed: string;
+    enforcedBy: string;
+    durationMs: number;
+    runAt: string;
+  }[];
   spend: { id: string; category: string; requirement: string; planned: number; executed: number }[];
 }
 
@@ -116,7 +166,12 @@ export interface MissionReport {
   verifiedPayments: PaymentOperation[];
   unresolvedPayments: PaymentOperation[];
   confirmedDeliveries: DeliveryTask[];
-  rejectedProposals: { version: number; status: string; createdBy: string; violations: { checkId: string; message: string }[] }[];
+  rejectedProposals: {
+    version: number;
+    status: string;
+    createdBy: string;
+    violations: { checkId: string; message: string }[];
+  }[];
   security: SecurityTestRun | null;
   audit: { events: number; chainIntact: boolean; chainEvents: number; brokenAt: number | null };
   dataProvenance: Record<string, number>;

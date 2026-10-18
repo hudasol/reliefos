@@ -1,15 +1,26 @@
-import type { AgDataSourcesDefinition, AgFieldDefinition, AgFormat, AgRelationDefinition } from 'ag-studio';
+import type {
+  AgDataSourcesDefinition,
+  AgFieldDefinition,
+  AgFormat,
+  AgRelationDefinition,
+} from 'ag-studio';
 import type { AnalyticsData } from '../../api/types';
 
 // AG Studio data model for a mission: the same persisted, server-computed tables the rest of the
 // app uses (GET /api/missions/:id/analytics), with relationships so widgets can join them.
 
 type Spec = [id: string, name: string, format: AgFormat, hide?: boolean];
-const fields = (specs: Spec[]): AgFieldDefinition[] => specs.map(([id, name, format, hide]) => ({ id, name, format, ...(hide ? { hide } : {}) }));
+const fields = (specs: Spec[]): AgFieldDefinition[] =>
+  specs.map(([id, name, format, hide]) => ({ id, name, format, ...(hide ? { hide } : {}) }));
 const rel = (id: string, source: string, target: string): AgRelationDefinition => {
   const [st, sf] = source.split('.') as [string, string];
   const [tt, tf] = target.split('.') as [string, string];
-  return { id, source: { tableId: st, fieldId: sf }, target: { tableId: tt, fieldId: tf }, type: 'many-to-one' };
+  return {
+    id,
+    source: { tableId: st, fieldId: sf },
+    target: { tableId: tt, fieldId: tf },
+    type: 'many-to-one',
+  };
 };
 
 export function buildStudioData(a: AnalyticsData): AgDataSourcesDefinition {
@@ -21,7 +32,8 @@ export function buildStudioData(a: AnalyticsData): AgDataSourcesDefinition {
     sources: [
       {
         id: 'requirements',
-        description: 'What the mission needs, derived deterministically from population and planning assumptions.',
+        description:
+          'What the mission needs, derived deterministically from population and planning assumptions.',
         data: a.requirements,
         fields: fields([
           ['id', 'Requirement ID', 'textFormat', true],
@@ -134,6 +146,9 @@ export function buildStudioData(a: AnalyticsData): AgDataSourcesDefinition {
         ]),
       },
     ],
-    relationships: [rel('line-requirement', 'lines.requirementId', 'requirements.id'), rel('candidate-requirement', 'candidates.requirementId', 'requirements.id')],
+    relationships: [
+      rel('line-requirement', 'lines.requirementId', 'requirements.id'),
+      rel('candidate-requirement', 'candidates.requirementId', 'requirements.id'),
+    ],
   };
 }

@@ -5,7 +5,15 @@ import { Button, Callout, errorText, Modal, useToast } from '../components/ui';
 import { usd } from '../lib/format';
 import { ApiError } from '../api/client';
 
-export function ApprovalModal({ mission, proposal, onClose }: { mission: Mission; proposal: Proposal; onClose: () => void }) {
+export function ApprovalModal({
+  mission,
+  proposal,
+  onClose,
+}: {
+  mission: Mission;
+  proposal: Proposal;
+  onClose: () => void;
+}) {
   const approve = useApprove(mission.id);
   const toast = useToast();
   const [name, setName] = useState('');
@@ -31,10 +39,18 @@ export function ApprovalModal({ mission, proposal, onClose }: { mission: Mission
                 { proposal, approverName: name.trim() },
                 {
                   onSuccess: () => {
-                    toast('ok', `Approved v${proposal.version}. Approval is bound to these exact terms.`);
+                    toast(
+                      'ok',
+                      `Approved v${proposal.version}. Approval is bound to these exact terms.`,
+                    );
                     onClose();
                   },
-                  onError: (e) => setError(e instanceof ApiError && e.code === 'POLICY_DENIED' ? 'Conditions changed since validation; the policy gate blocked this approval. See the procurement page.' : errorText(e)),
+                  onError: (e) =>
+                    setError(
+                      e instanceof ApiError && e.code === 'POLICY_DENIED'
+                        ? 'Conditions changed since validation; the policy gate blocked this approval. See the procurement page.'
+                        : errorText(e),
+                    ),
                 },
               )
             }
@@ -56,15 +72,33 @@ export function ApprovalModal({ mission, proposal, onClose }: { mission: Mission
         <dt>Bound to terms</dt>
         <dd className="hash">{proposal.contentHash}</dd>
       </dl>
-      {proposal.gaps.length > 0 && <Callout tone="warn" title="This plan does not cover everything">{proposal.gaps.map((g) => `${g.label}: short ${g.shortfallUnits}`).join('; ')}</Callout>}
+      {proposal.gaps.length > 0 && (
+        <Callout tone="warn" title="This plan does not cover everything">
+          {proposal.gaps.map((g) => `${g.label}: short ${g.shortfallUnits}`).join('; ')}
+        </Callout>
+      )}
       <Callout tone="info">{statement}</Callout>
       <div className="field">
         <label htmlFor="approver">Approver name</label>
-        <input id="approver" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name of the authorised coordinator" />
+        <input
+          id="approver"
+          className="input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Full name of the authorised coordinator"
+        />
       </div>
       <label className="row small" style={{ alignItems: 'flex-start' }}>
-        <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} style={{ marginTop: 3 }} />
-        <span>I have reviewed the lines, delivery times and remaining gaps, and I hold spending authority for this mission.</span>
+        <input
+          type="checkbox"
+          checked={ack}
+          onChange={(e) => setAck(e.target.checked)}
+          style={{ marginTop: 3 }}
+        />
+        <span>
+          I have reviewed the lines, delivery times and remaining gaps, and I hold spending
+          authority for this mission.
+        </span>
       </label>
       {error && <Callout tone="danger">{error}</Callout>}
     </Modal>

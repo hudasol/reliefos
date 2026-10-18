@@ -1,5 +1,12 @@
 import { localTime } from '../../shared/time.js';
-import type { FulfillmentQuote, Gap, Priority, ProductCandidate, Requirement, ShippingCharge } from '../../shared/types.js';
+import type {
+  FulfillmentQuote,
+  Gap,
+  Priority,
+  ProductCandidate,
+  Requirement,
+  ShippingCharge,
+} from '../../shared/types.js';
 
 // Deterministic procurement optimizer. It enforces hard constraints before it optimises anything:
 // a candidate that fails a hard constraint is excluded with a reason, never traded off against price.
@@ -69,11 +76,14 @@ const PRIORITY_ORDER: Record<Priority, number> = { critical: 0, high: 1, standar
 export function eligibilityReasons(opt: PlanOption, deadline: Date, timeZone?: string): string[] {
   const { candidate: c, quote: q } = opt;
   const reasons: string[] = [];
-  if (c.quarantined) reasons.push('Quarantined: listing content attempted to instruct the purchasing agent');
+  if (c.quarantined)
+    reasons.push('Quarantined: listing content attempted to instruct the purchasing agent');
   if (!c.specCheck.passed) reasons.push(...c.specCheck.reasons.map((r) => `Spec: ${r}`));
-  if (!c.pack.unitsPerPack || c.pack.unitsPerPack <= 0) reasons.push('Pack size could not be established from the listing');
+  if (!c.pack.unitsPerPack || c.pack.unitsPerPack <= 0)
+    reasons.push('Pack size could not be established from the listing');
   if (c.priceCents === null) reasons.push('No usable in-stock USD offer price');
-  if (c.currency !== 'USD') reasons.push(`Currency ${c.currency} does not match mission currency USD`);
+  if (c.currency !== 'USD')
+    reasons.push(`Currency ${c.currency} does not match mission currency USD`);
   if (!c.merchantDomain) reasons.push('No merchant identified for the offer');
   if (!q) {
     reasons.push('No supplier fulfilment commitment');
@@ -81,7 +91,9 @@ export function eligibilityReasons(opt: PlanOption, deadline: Date, timeZone?: s
     if (q.stockPacks <= 0) reasons.push('Supplier reports no stock');
     const latest = deadline.getTime() - INTAKE_BUFFER_MINUTES * 60_000;
     if (new Date(q.eta).getTime() > latest) {
-      reasons.push(`Delivery ETA ${localTime(q.eta, timeZone)} misses the ${localTime(new Date(latest), timeZone)} intake cutoff (${INTAKE_BUFFER_MINUTES} min before the deadline)`);
+      reasons.push(
+        `Delivery ETA ${localTime(q.eta, timeZone)} misses the ${localTime(new Date(latest), timeZone)} intake cutoff (${INTAKE_BUFFER_MINUTES} min before the deadline)`,
+      );
     }
   }
   return reasons;
@@ -128,9 +140,15 @@ export function optimizePlan(input: PlanInput): PlanResult {
   const eligibleByReq = new Map<string, PlanOption[]>();
   for (const opt of input.options) {
     const reasons = eligibilityReasons(opt, input.deadline, input.timeZone);
-    if (input.excludedCandidateIds?.has(opt.candidate.id)) reasons.push('Excluded by recovery decision');
+    if (input.excludedCandidateIds?.has(opt.candidate.id))
+      reasons.push('Excluded by recovery decision');
     if (reasons.length > 0) {
-      exclusions.push({ candidateId: opt.candidate.id, requirementId: opt.candidate.requirementId, title: opt.candidate.title, reasons });
+      exclusions.push({
+        candidateId: opt.candidate.id,
+        requirementId: opt.candidate.requirementId,
+        title: opt.candidate.title,
+        reasons,
+      });
       continue;
     }
     const list = eligibleByReq.get(opt.candidate.requirementId) ?? [];
@@ -138,7 +156,9 @@ export function optimizePlan(input: PlanInput): PlanResult {
     eligibleByReq.set(opt.candidate.requirementId, list);
   }
 
-  const ordered = [...input.requirements].sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+  const ordered = [...input.requirements].sort(
+    (a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority],
+  );
   for (const req of ordered) {
     let remaining = req.quantity - (input.purchasedUnits[req.id] ?? 0);
     if (remaining <= 0) continue;
@@ -153,11 +173,18 @@ export function optimizePlan(input: PlanInput): PlanResult {
       const useful = Math.min(need, Math.floor(packs * per));
       const rank = preferred.indexOf(opt.candidate.id);
       const nudge = 1 + 0.05 * (rank === -1 ? preferred.length : rank);
-      return useful > 0 ? ((packs * (opt.quote!.unitPriceCents + opt.quote!.shippingPerPackCents)) / useful) * nudge : Infinity;
+      return useful > 0
+        ? ((packs * (opt.quote!.unitPriceCents + opt.quote!.shippingPerPackCents)) / useful) * nudge
+        : Infinity;
     };
     let suppliers = 0;
     while (remaining > 0 && suppliers < 3 && pool.length > 0) {
-      pool.sort((a, b) => score(a, remaining) - score(b, remaining) || costPerUnit(a) - costPerUnit(b) || a.candidate.id.localeCompare(b.candidate.id));
+      pool.sort(
+        (a, b) =>
+          score(a, remaining) - score(b, remaining) ||
+          costPerUnit(a) - costPerUnit(b) ||
+          a.candidate.id.localeCompare(b.candidate.id),
+      );
       const opt = pool.shift()!;
       const per = opt.candidate.pack.unitsPerPack!;
       const q = opt.quote!;
@@ -165,7 +192,9 @@ export function optimizePlan(input: PlanInput): PlanResult {
       if (packs <= 0) continue;
       suppliers += 1;
       if (packs < Math.ceil(remaining / per)) {
-        tradeoffs.push(`${req.label}: ${opt.candidate.merchantDomain} can supply only ${packs} packs; splitting across suppliers.`);
+        tradeoffs.push(
+          `${req.label}: ${opt.candidate.merchantDomain} can supply only ${packs} packs; splitting across suppliers.`,
+        );
       }
       lines.push({
         requirementId: req.id,
@@ -220,7 +249,9 @@ export function optimizePlan(input: PlanInput): PlanResult {
   const gaps: Gap[] = [];
   for (const req of input.requirements) {
     const purchased = input.purchasedUnits[req.id] ?? 0;
-    const planned = finalLines.filter((l) => l.requirementId === req.id).reduce((s, l) => s + l.unitsCovered, 0);
+    const planned = finalLines
+      .filter((l) => l.requirementId === req.id)
+      .reduce((s, l) => s + l.unitsCovered, 0);
     const shortfall = req.quantity - purchased - planned;
     if (shortfall > 0) {
       const hadOptions = (eligibleByReq.get(req.id) ?? []).length > 0;

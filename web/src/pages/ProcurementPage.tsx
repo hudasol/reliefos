@@ -1,13 +1,36 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import type { AgentRun, Proposal } from '../../../shared/types';
-import { useAgentRuns, useCandidates, useMission, usePlan, useRecover, useRejectProposal } from '../api/hooks';
-import { Badge, Button, Callout, Empty, errorText, Modal, Panel, ProvenanceTag, QueryView, SimTag, StatusBadge, useToast } from '../components/ui';
+import {
+  useAgentRuns,
+  useCandidates,
+  useMission,
+  usePlan,
+  useRecover,
+  useRejectProposal,
+} from '../api/hooks';
+import {
+  Badge,
+  Button,
+  Callout,
+  Empty,
+  errorText,
+  Modal,
+  Panel,
+  ProvenanceTag,
+  QueryView,
+  SimTag,
+  StatusBadge,
+  useToast,
+} from '../components/ui';
 import { ApprovalModal } from '../features/ApprovalModal';
 import { PolicyVerdict } from '../features/PolicyVerdict';
 import { clock, minutesBetween, num, PROPOSAL_TONE, usd } from '../lib/format';
 
-function diff(prev: Proposal | undefined, next: Proposal): { kind: 'add' | 'remove' | 'change'; text: string }[] {
+function diff(
+  prev: Proposal | undefined,
+  next: Proposal,
+): { kind: 'add' | 'remove' | 'change'; text: string }[] {
   if (!prev) return [];
   const key = (l: Proposal['lines'][number]) => `${l.requirementId}|${l.candidateId}`;
   const pm = new Map(prev.lines.map((l) => [key(l), l]));
@@ -15,16 +38,28 @@ function diff(prev: Proposal | undefined, next: Proposal): { kind: 'add' | 'remo
   const out: { kind: 'add' | 'remove' | 'change'; text: string }[] = [];
   for (const [k, l] of pm) {
     const n = nm.get(k);
-    if (!n) out.push({ kind: 'remove', text: `${l.quantityPacks} × ${l.title} (${l.merchantDomain})` });
-    else if (n.quantityPacks !== l.quantityPacks || n.unitPriceCents !== l.unitPriceCents) out.push({ kind: 'change', text: `${l.title}: ${l.quantityPacks} → ${n.quantityPacks} packs` });
+    if (!n)
+      out.push({ kind: 'remove', text: `${l.quantityPacks} × ${l.title} (${l.merchantDomain})` });
+    else if (n.quantityPacks !== l.quantityPacks || n.unitPriceCents !== l.unitPriceCents)
+      out.push({
+        kind: 'change',
+        text: `${l.title}: ${l.quantityPacks} → ${n.quantityPacks} packs`,
+      });
   }
-  for (const [k, n] of nm) if (!pm.has(k)) out.push({ kind: 'add', text: `${n.quantityPacks} × ${n.title} (${n.merchantDomain})` });
+  for (const [k, n] of nm)
+    if (!pm.has(k))
+      out.push({ kind: 'add', text: `${n.quantityPacks} × ${n.title} (${n.merchantDomain})` });
   return out;
 }
 
 function explanationFor(runs: AgentRun[] | undefined, proposalId: string) {
-  const run = runs?.find((r) => r.role === 'explainer' && (r.output as { proposalId?: string })?.proposalId === proposalId);
-  return run ? { run, out: run.output as { headline: string; points: string[]; nextStep: string } } : null;
+  const run = runs?.find(
+    (r) =>
+      r.role === 'explainer' && (r.output as { proposalId?: string })?.proposalId === proposalId,
+  );
+  return run
+    ? { run, out: run.output as { headline: string; points: string[]; nextStep: string } }
+    : null;
 }
 
 export function ProcurementPage() {
@@ -43,7 +78,10 @@ export function ProcurementPage() {
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(false);
 
-  const candidateById = useMemo(() => new Map((cands.data ?? []).map((c) => [c.id, c])), [cands.data]);
+  const candidateById = useMemo(
+    () => new Map((cands.data ?? []).map((c) => [c.id, c])),
+    [cands.data],
+  );
 
   return (
     <div className="content">
@@ -53,11 +91,22 @@ export function ProcurementPage() {
           const active = d.activeProposal;
           const p = proposals.find((x) => x.id === selected) ?? active;
           const reqById = new Map(requirements.map((r) => [r.id, r]));
-          const parent = p?.parentProposalId ? proposals.find((x) => x.id === p.parentProposalId) : undefined;
+          const parent = p?.parentProposalId
+            ? proposals.find((x) => x.id === p.parentProposalId)
+            : undefined;
           const changes = p ? diff(parent, p) : [];
           const expl = p ? explanationFor(runs.data, p.id) : null;
-          const canPlan = ['DRAFT', 'PLANNING', 'NEEDS_REVIEW', 'READY_FOR_APPROVAL', 'PARTIALLY_FULFILLED', 'BLOCKED'].includes(mission.status) && d.summary.unresolvedPayments === 0;
-          const canRecover = p && ['REJECTED', 'INVALIDATED'].includes(p.status) && p.id === proposals[0]?.id;
+          const canPlan =
+            [
+              'DRAFT',
+              'PLANNING',
+              'NEEDS_REVIEW',
+              'READY_FOR_APPROVAL',
+              'PARTIALLY_FULFILLED',
+              'BLOCKED',
+            ].includes(mission.status) && d.summary.unresolvedPayments === 0;
+          const canRecover =
+            p && ['REJECTED', 'INVALIDATED'].includes(p.status) && p.id === proposals[0]?.id;
           const isLatest = p?.id === proposals[0]?.id;
 
           const runPlan = () =>
@@ -66,7 +115,10 @@ export function ProcurementPage() {
               {
                 onSuccess: (r) => {
                   setSelected(null);
-                  toast(r.decision.outcome === 'ALLOW' ? 'ok' : 'danger', `Proposal v${r.proposal.version} ${r.decision.outcome === 'ALLOW' ? 'validated — awaiting approval' : 'rejected by the policy gate'}`);
+                  toast(
+                    r.decision.outcome === 'ALLOW' ? 'ok' : 'danger',
+                    `Proposal v${r.proposal.version} ${r.decision.outcome === 'ALLOW' ? 'validated — awaiting approval' : 'rejected by the policy gate'}`,
+                  );
                 },
                 onError: (e) => toast('danger', errorText(e)),
               },
@@ -75,7 +127,10 @@ export function ProcurementPage() {
             recover.mutate(p!.id, {
               onSuccess: (r) => {
                 setSelected(null);
-                toast(r.decision.outcome === 'ALLOW' ? 'ok' : 'danger', `Recovery plan v${r.proposal.version}: ${r.decision.outcome === 'ALLOW' ? 'passes every hard check' : 'still blocked'}`);
+                toast(
+                  r.decision.outcome === 'ALLOW' ? 'ok' : 'danger',
+                  `Recovery plan v${r.proposal.version}: ${r.decision.outcome === 'ALLOW' ? 'passes every hard check' : 'still blocked'}`,
+                );
               },
               onError: (e) => toast('danger', errorText(e)),
             });
@@ -85,11 +140,23 @@ export function ProcurementPage() {
               <div className="page-head">
                 <div>
                   <h1>Procurement</h1>
-                  <p className="lede">The buyer agent ranks only listings that already passed specification, evidence and deadline checks. Quantities, totals and the decision come from deterministic code.</p>
+                  <p className="lede">
+                    The buyer agent ranks only listings that already passed specification, evidence
+                    and deadline checks. Quantities, totals and the decision come from deterministic
+                    code.
+                  </p>
                 </div>
                 <span style={{ flex: 1 }} />
-                <label className="row small text-2" title="Re-query the catalog instead of reusing results from the last 30 minutes">
-                  <input type="checkbox" checked={refresh} onChange={(e) => setRefresh(e.target.checked)} /> Refresh catalog
+                <label
+                  className="row small text-2"
+                  title="Re-query the catalog instead of reusing results from the last 30 minutes"
+                >
+                  <input
+                    type="checkbox"
+                    checked={refresh}
+                    onChange={(e) => setRefresh(e.target.checked)}
+                  />{' '}
+                  Refresh catalog
                 </label>
                 <Button onClick={runPlan} loading={plan.isPending} disabled={!canPlan}>
                   {proposals.length ? 'Re-plan' : 'Plan mission'}
@@ -103,8 +170,21 @@ export function ProcurementPage() {
 
               {!p ? (
                 <Panel title="No proposal">
-                  <Empty title="Nothing planned yet" action={<Button variant="primary" onClick={runPlan} loading={plan.isPending} disabled={!canPlan}>Plan mission</Button>}>
-                    Planning derives requirements, retrieves products and submits a proposal to the DEADMAN policy gate.
+                  <Empty
+                    title="Nothing planned yet"
+                    action={
+                      <Button
+                        variant="primary"
+                        onClick={runPlan}
+                        loading={plan.isPending}
+                        disabled={!canPlan}
+                      >
+                        Plan mission
+                      </Button>
+                    }
+                  >
+                    Planning derives requirements, retrieves products and submits a proposal to the
+                    DEADMAN policy gate.
                   </Empty>
                 </Panel>
               ) : (
@@ -121,13 +201,21 @@ export function ProcurementPage() {
                               <Button size="sm" variant="danger" onClick={() => setRejecting(p.id)}>
                                 Reject
                               </Button>
-                              <Button size="sm" variant="primary" onClick={() => setApproving(true)}>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => setApproving(true)}
+                              >
                                 Review & approve
                               </Button>
                             </>
                           )}
                           {p.status === 'APPROVED' && (
-                            <Button size="sm" variant="primary" onClick={() => navigate(`/missions/${id}/payments`)}>
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => navigate(`/missions/${id}/payments`)}
+                            >
                               Proceed to PayPal
                             </Button>
                           )}
@@ -136,7 +224,10 @@ export function ProcurementPage() {
                       flush
                     >
                       {p.lines.length === 0 ? (
-                        <div className="panel-body muted">This proposal has no lines: nothing eligible could be bought within the constraints.</div>
+                        <div className="panel-body muted">
+                          This proposal has no lines: nothing eligible could be bought within the
+                          constraints.
+                        </div>
                       ) : (
                         <table className="tbl">
                           <thead>
@@ -160,12 +251,21 @@ export function ProcurementPage() {
                               return (
                                 <tr key={l.id}>
                                   <td>
-                                    <div className="small muted">{req?.label ?? 'Unlinked requirement'}</div>
+                                    <div className="small muted">
+                                      {req?.label ?? 'Unlinked requirement'}
+                                    </div>
                                     <div className="strong">{l.title}</div>
                                     <div className="row" style={{ marginTop: 3 }}>
                                       <ProvenanceTag p={l.provenance} />
                                       {c?.quarantined && <Badge tone="danger">Quarantined</Badge>}
-                                      {c?.pack.evidence && <span className="quote" title="Pack-size evidence quoted from the listing">{c.pack.evidence}</span>}
+                                      {c?.pack.evidence && (
+                                        <span
+                                          className="quote"
+                                          title="Pack-size evidence quoted from the listing"
+                                        >
+                                          {c.pack.evidence}
+                                        </span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="small">{l.merchantDomain}</td>
@@ -175,13 +275,29 @@ export function ProcurementPage() {
                                   </td>
                                   <td className="num">
                                     {usd(l.unitPriceCents)}
-                                    {drift && <div className="small" style={{ color: 'var(--danger)' }}>now {usd(current!.unitPriceCents)}</div>}
+                                    {drift && (
+                                      <div className="small" style={{ color: 'var(--danger)' }}>
+                                        now {usd(current!.unitPriceCents)}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="num">{usd(l.lineTotalCents)}</td>
                                   <td>
                                     <div>{clock(current?.eta ?? l.eta, mission.timezone)}</div>
-                                    <div className="small" style={{ color: slack < 30 ? 'var(--danger)' : slack < 75 ? 'var(--warn)' : 'var(--text-3)' }}>
-                                      {slack >= 0 ? `${slack} min before deadline` : `${-slack} min late`}
+                                    <div
+                                      className="small"
+                                      style={{
+                                        color:
+                                          slack < 30
+                                            ? 'var(--danger)'
+                                            : slack < 75
+                                              ? 'var(--warn)'
+                                              : 'var(--text-3)',
+                                      }}
+                                    >
+                                      {slack >= 0
+                                        ? `${slack} min before deadline`
+                                        : `${-slack} min late`}
                                     </div>
                                     <SimTag label="Sim ETA" />
                                   </td>
@@ -208,7 +324,14 @@ export function ProcurementPage() {
                             ))}
                             <tr>
                               <td colSpan={5}>
-                                Total · authority {usd(mission.budgetCents)} · {usd(mission.budgetCents - d.summary.committedCents - d.summary.pendingCents - p.totalCents)} headroom
+                                Total · authority {usd(mission.budgetCents)} ·{' '}
+                                {usd(
+                                  mission.budgetCents -
+                                    d.summary.committedCents -
+                                    d.summary.pendingCents -
+                                    p.totalCents,
+                                )}{' '}
+                                headroom
                               </td>
                               <td className="num">{usd(p.totalCents)}</td>
                               <td />
@@ -222,7 +345,11 @@ export function ProcurementPage() {
                       <Panel title="Gaps and trade-offs">
                         <div className="stack">
                           {p.gaps.map((g) => (
-                            <Callout key={g.requirementId} tone="warn" title={`${g.label}: short ${num(g.shortfallUnits)} of ${num(g.neededUnits)}`}>
+                            <Callout
+                              key={g.requirementId}
+                              tone="warn"
+                              title={`${g.label}: short ${num(g.shortfallUnits)} of ${num(g.neededUnits)}`}
+                            >
                               <div className="small">{g.reason}</div>
                             </Callout>
                           ))}
@@ -240,7 +367,12 @@ export function ProcurementPage() {
                         <div className="stack small">
                           {changes.map((c, i) => (
                             <div key={i} className="row">
-                              <Badge tone={c.kind === 'add' ? 'ok' : c.kind === 'remove' ? 'danger' : 'warn'} plain>
+                              <Badge
+                                tone={
+                                  c.kind === 'add' ? 'ok' : c.kind === 'remove' ? 'danger' : 'warn'
+                                }
+                                plain
+                              >
                                 {c.kind}
                               </Badge>
                               {c.text}
@@ -256,10 +388,27 @@ export function ProcurementPage() {
 
                   <div className="stack" style={{ gap: 18 }}>
                     <Panel title="Policy gate" sub="DEADMAN · deterministic">
-                      {p.latestDecision ? <PolicyVerdict key={p.latestDecision.id} decision={p.latestDecision} timeZone={mission.timezone} /> : <span className="muted">Not evaluated.</span>}
+                      {p.latestDecision ? (
+                        <PolicyVerdict
+                          key={p.latestDecision.id}
+                          decision={p.latestDecision}
+                          timeZone={mission.timezone}
+                        />
+                      ) : (
+                        <span className="muted">Not evaluated.</span>
+                      )}
                     </Panel>
                     {expl && (
-                      <Panel title="Explanation" actions={<Badge tone={expl.run.mode === 'claude' ? 'accent' : 'neutral'}>{expl.run.mode === 'claude' ? `Claude · ${expl.run.model}` : 'Deterministic'}</Badge>}>
+                      <Panel
+                        title="Explanation"
+                        actions={
+                          <Badge tone={expl.run.mode === 'claude' ? 'accent' : 'neutral'}>
+                            {expl.run.mode === 'claude'
+                              ? `Claude · ${expl.run.model}`
+                              : 'Deterministic'}
+                          </Badge>
+                        }
+                      >
                         <div className="stack">
                           <div className="strong">{expl.out.headline}</div>
                           <ul style={{ margin: 0, paddingLeft: 18 }} className="small">
@@ -268,8 +417,14 @@ export function ProcurementPage() {
                             ))}
                           </ul>
                           <div className="small text-2">{expl.out.nextStep}</div>
-                          {!expl.run.valid && expl.run.error && <div className="small muted">Model output not used: {expl.run.error}</div>}
-                          <div className="small muted">Explanations are advisory; the gate never reads them.</div>
+                          {!expl.run.valid && expl.run.error && (
+                            <div className="small muted">
+                              Model output not used: {expl.run.error}
+                            </div>
+                          )}
+                          <div className="small muted">
+                            Explanations are advisory; the gate never reads them.
+                          </div>
                         </div>
                       </Panel>
                     )}
@@ -277,9 +432,18 @@ export function ProcurementPage() {
                       <table className="tbl">
                         <tbody>
                           {proposals.map((x) => (
-                            <tr key={x.id} className={x.id === p.id ? '' : 'dim'} style={{ cursor: 'pointer' }} onClick={() => setSelected(x.id)}>
+                            <tr
+                              key={x.id}
+                              className={x.id === p.id ? '' : 'dim'}
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => setSelected(x.id)}
+                            >
                               <td>
-                                <button className="btn ghost sm" onClick={() => setSelected(x.id)} aria-pressed={x.id === p.id}>
+                                <button
+                                  className="btn ghost sm"
+                                  onClick={() => setSelected(x.id)}
+                                  aria-pressed={x.id === p.id}
+                                >
                                   v{x.version}
                                 </button>
                               </td>
@@ -294,13 +458,20 @@ export function ProcurementPage() {
                       </table>
                     </Panel>
                     <div className="small muted">
-                      Evidence for every listing, including excluded ones, is on the <Link to={`/missions/${id}/evidence`}>product evidence</Link> page.
+                      Evidence for every listing, including excluded ones, is on the{' '}
+                      <Link to={`/missions/${id}/evidence`}>product evidence</Link> page.
                     </div>
                   </div>
                 </div>
               )}
 
-              {approving && active && <ApprovalModal mission={mission} proposal={active} onClose={() => setApproving(false)} />}
+              {approving && active && (
+                <ApprovalModal
+                  mission={mission}
+                  proposal={active}
+                  onClose={() => setApproving(false)}
+                />
+              )}
               {rejecting && (
                 <RejectModal
                   onClose={() => setRejecting(null)}
@@ -308,7 +479,13 @@ export function ProcurementPage() {
                   onConfirm={(reason) =>
                     reject.mutate(
                       { proposalId: rejecting, reason },
-                      { onSuccess: () => { setRejecting(null); toast('info', 'Proposal rejected. Generate a recovery plan or re-plan.'); }, onError: (e) => toast('danger', errorText(e)) },
+                      {
+                        onSuccess: () => {
+                          setRejecting(null);
+                          toast('info', 'Proposal rejected. Generate a recovery plan or re-plan.');
+                        },
+                        onError: (e) => toast('danger', errorText(e)),
+                      },
                     )
                   }
                 />
@@ -321,7 +498,15 @@ export function ProcurementPage() {
   );
 }
 
-function RejectModal({ onClose, onConfirm, loading }: { onClose: () => void; onConfirm: (reason: string) => void; loading: boolean }) {
+function RejectModal({
+  onClose,
+  onConfirm,
+  loading,
+}: {
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+  loading: boolean;
+}) {
   const [reason, setReason] = useState('');
   return (
     <Modal
@@ -332,7 +517,12 @@ function RejectModal({ onClose, onConfirm, loading }: { onClose: () => void; onC
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="danger" disabled={reason.trim().length < 3} loading={loading} onClick={() => onConfirm(reason.trim())}>
+          <Button
+            variant="danger"
+            disabled={reason.trim().length < 3}
+            loading={loading}
+            onClick={() => onConfirm(reason.trim())}
+          >
             Reject
           </Button>
         </>
@@ -340,7 +530,13 @@ function RejectModal({ onClose, onConfirm, loading }: { onClose: () => void; onC
     >
       <div className="field">
         <label htmlFor="reason">Reason (recorded in the audit trail)</label>
-        <textarea id="reason" className="input" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+        <textarea
+          id="reason"
+          className="input"
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
       </div>
     </Modal>
   );

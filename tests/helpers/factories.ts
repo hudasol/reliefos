@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import type { FulfillmentQuote, ProductCandidate, Proposal, Requirement } from '../../shared/types.js';
+import type {
+  FulfillmentQuote,
+  ProductCandidate,
+  Proposal,
+  Requirement,
+} from '../../shared/types.js';
 import { deriveRequirements } from '../../server/domain/requirements.js';
 import { checkSpec, parseAttributes, parsePack } from '../../server/catalog/evidence.js';
 import { isBlocking, scanContent } from '../../server/catalog/contentSecurity.js';
@@ -12,21 +17,30 @@ export const WINDOW_START = new Date('2026-10-20T15:00:00.000Z'); // 11:00 EDT
 export const DEADLINE = new Date('2026-10-20T21:00:00.000Z'); // 17:00 EDT
 
 export function makeRequirements(): Requirement[] {
-  return deriveRequirements({ population: 120, infants: 8, householdSize: 4, coverageDays: 3 }).map((d, i) => ({
-    ...d,
-    id: `req-${d.category}`,
-    missionId: MISSION_ID,
-    searchQuery: d.searchQuery,
-    basis: d.basis,
-    position: i,
-  }));
+  return deriveRequirements({ population: 120, infants: 8, householdSize: 4, coverageDays: 3 }).map(
+    (d, i) => ({
+      ...d,
+      id: `req-${d.category}`,
+      missionId: MISSION_ID,
+      searchQuery: d.searchQuery,
+      basis: d.basis,
+      position: i,
+    }),
+  );
 }
 
-export function makeCandidate(req: Requirement, overrides: Partial<ProductCandidate> & { title: string; priceCents: number }): ProductCandidate {
+export function makeCandidate(
+  req: Requirement,
+  overrides: Partial<ProductCandidate> & { title: string; priceCents: number },
+): ProductCandidate {
   const description = overrides.description ?? null;
   const pack = overrides.pack ?? parsePack(req.category, overrides.title, description);
   const attributes = parseAttributes(overrides.title, description);
-  const flags = scanContent({ title: overrides.title, description, merchant: overrides.merchantDomain ?? null });
+  const flags = scanContent({
+    title: overrides.title,
+    description,
+    merchant: overrides.merchantDomain ?? null,
+  });
   return {
     id: overrides.id ?? `cand-${randomUUID().slice(0, 8)}`,
     missionId: MISSION_ID,
@@ -51,7 +65,10 @@ export function makeCandidate(req: Requirement, overrides: Partial<ProductCandid
   };
 }
 
-export function makeQuote(c: ProductCandidate, overrides: Partial<FulfillmentQuote> = {}): FulfillmentQuote {
+export function makeQuote(
+  c: ProductCandidate,
+  overrides: Partial<FulfillmentQuote> = {},
+): FulfillmentQuote {
   return {
     id: `quote-${c.id}`,
     candidateId: c.id,
@@ -74,13 +91,41 @@ export function makeQuote(c: ProductCandidate, overrides: Partial<FulfillmentQuo
 /** A standard catalog where every requirement has one compliant, affordable option. */
 export function makeScenario() {
   const requirements = makeRequirements();
-  const r = Object.fromEntries(requirements.map((x) => [x.category, x])) as Record<string, Requirement>;
+  const r = Object.fromEntries(requirements.map((x) => [x.category, x])) as Record<
+    string,
+    Requirement
+  >;
   const candidates = [
-    makeCandidate(r.water!, { id: 'c-water', title: 'Purified Drinking Water, 16.9 fl oz Bottles, Pack of 24', priceCents: 549, merchantDomain: 'harbor.example' }),
-    makeCandidate(r.blankets!, { id: 'c-blanket', title: 'Polar Fleece Throw Blankets, Pack of 12', priceCents: 9400, merchantDomain: 'harbor.example' }),
-    makeCandidate(r.hygiene!, { id: 'c-hygiene', title: 'Individually Packed Hygiene Kits, 10 Pack', priceCents: 13900, merchantDomain: 'eastside.example' }),
-    makeCandidate(r.power!, { id: 'c-power', title: 'Portable Power Bank 10000mAh USB-C, 2 Pack', priceCents: 4198, merchantDomain: 'quick.example' }),
-    makeCandidate(r.baby!, { id: 'c-baby', title: 'Disposable Baby Diapers Size 3, 136 Count', priceCents: 3999, merchantDomain: 'eastside.example' }),
+    makeCandidate(r.water!, {
+      id: 'c-water',
+      title: 'Purified Drinking Water, 16.9 fl oz Bottles, Pack of 24',
+      priceCents: 549,
+      merchantDomain: 'harbor.example',
+    }),
+    makeCandidate(r.blankets!, {
+      id: 'c-blanket',
+      title: 'Polar Fleece Throw Blankets, Pack of 12',
+      priceCents: 9400,
+      merchantDomain: 'harbor.example',
+    }),
+    makeCandidate(r.hygiene!, {
+      id: 'c-hygiene',
+      title: 'Individually Packed Hygiene Kits, 10 Pack',
+      priceCents: 13900,
+      merchantDomain: 'eastside.example',
+    }),
+    makeCandidate(r.power!, {
+      id: 'c-power',
+      title: 'Portable Power Bank 10000mAh USB-C, 2 Pack',
+      priceCents: 4198,
+      merchantDomain: 'quick.example',
+    }),
+    makeCandidate(r.baby!, {
+      id: 'c-baby',
+      title: 'Disposable Baby Diapers Size 3, 136 Count',
+      priceCents: 3999,
+      merchantDomain: 'eastside.example',
+    }),
   ];
   const quotes = candidates.map((c) => makeQuote(c));
   return { requirements, r, candidates, quotes };
@@ -89,7 +134,10 @@ export function makeScenario() {
 export function planFor(s: ReturnType<typeof makeScenario>, budgetCents = 400_000): PlanResult {
   return optimizePlan({
     requirements: s.requirements,
-    options: s.candidates.map((c) => ({ candidate: c, quote: s.quotes.find((q) => q.candidateId === c.id) ?? null })),
+    options: s.candidates.map((c) => ({
+      candidate: c,
+      quote: s.quotes.find((q) => q.candidateId === c.id) ?? null,
+    })),
     budgetCents,
     committedCents: 0,
     deadline: DEADLINE,
@@ -116,7 +164,13 @@ export function proposalFromPlan(plan: PlanResult, version = 1): Proposal {
     missionId: MISSION_ID,
     missionVersion: 1,
     currency: 'USD',
-    lines: lines.map((l) => ({ requirementId: l.requirementId, candidateId: l.candidateId, quoteId: l.quoteId, quantityPacks: l.quantityPacks, unitPriceCents: l.unitPriceCents })),
+    lines: lines.map((l) => ({
+      requirementId: l.requirementId,
+      candidateId: l.candidateId,
+      quoteId: l.quoteId,
+      quantityPacks: l.quantityPacks,
+      unitPriceCents: l.unitPriceCents,
+    })),
     shipping: plan.shipping,
     subtotalCents: plan.subtotalCents,
     shippingCents: plan.shippingCents,
@@ -147,11 +201,22 @@ export function proposalFromPlan(plan: PlanResult, version = 1): Proposal {
   };
 }
 
-export function policyContext(s: ReturnType<typeof makeScenario>, proposal: Proposal, overrides: Partial<PolicyContext> = {}): PolicyContext {
+export function policyContext(
+  s: ReturnType<typeof makeScenario>,
+  proposal: Proposal,
+  overrides: Partial<PolicyContext> = {},
+): PolicyContext {
   return {
     stage: 'validation',
     now: WINDOW_START,
-    mission: { id: MISSION_ID, status: 'PLANNING', version: 1, budgetCents: 400_000, currency: 'USD', deadline: DEADLINE.toISOString() },
+    mission: {
+      id: MISSION_ID,
+      status: 'PLANNING',
+      version: 1,
+      budgetCents: 400_000,
+      currency: 'USD',
+      deadline: DEADLINE.toISOString(),
+    },
     requirements: s.requirements,
     proposal,
     candidates: new Map(s.candidates.map((c) => [c.id, c])),

@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useCreateScenario, useMissions } from '../api/hooks';
-import { Button, Empty, errorText, Panel, QueryView, StatusBadge, useToast } from '../components/ui';
+import {
+  Button,
+  Empty,
+  errorText,
+  Panel,
+  QueryView,
+  StatusBadge,
+  useToast,
+} from '../components/ui';
 import { IconPlus } from '../components/icons';
 import { clock, dateTime, MISSION_TONE, usd } from '../lib/format';
 
@@ -20,7 +28,10 @@ export function MissionsPage({ autoOpen }: { autoOpen?: boolean }) {
       <div className="page-head">
         <div>
           <h1>Missions</h1>
-          <p className="lede">Each mission turns an urgent supply request into a validated, approved and auditable PayPal purchase. Missions are private to this browser workspace.</p>
+          <p className="lede">
+            Each mission turns an urgent supply request into a validated, approved and auditable
+            PayPal purchase. Missions are private to this browser workspace.
+          </p>
         </div>
         <span style={{ flex: 1 }} />
         <Button
@@ -42,7 +53,14 @@ export function MissionsPage({ autoOpen }: { autoOpen?: boolean }) {
         <QueryView q={q}>
           {(missions) =>
             missions.length === 0 ? (
-              <Empty title="No missions yet" action={<Button variant="primary" onClick={() => navigate('/missions/new')}>Create a mission</Button>}>
+              <Empty
+                title="No missions yet"
+                action={
+                  <Button variant="primary" onClick={() => navigate('/missions/new')}>
+                    Create a mission
+                  </Button>
+                }
+              >
                 Describe what is needed, where and by when; RELIEFOS derives the requirements.
               </Empty>
             ) : (

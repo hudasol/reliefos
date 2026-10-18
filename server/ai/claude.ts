@@ -2,7 +2,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { z } from 'zod';
 import { sanitizeForPrompt } from '../catalog/contentSecurity.js';
-import { explainDeterministically, interpretDeterministically, selectDeterministically } from './deterministic.js';
+import {
+  explainDeterministically,
+  interpretDeterministically,
+  selectDeterministically,
+} from './deterministic.js';
 import {
   ExplanationSchema,
   InterpretationSchema,
@@ -73,17 +77,35 @@ export class ClaudeAgent implements MissionAgent {
         messages: [{ role: 'user', content: prompt }],
         output_config: { effort, format: betaZodOutputFormat(schema) },
       });
-      if (response.stop_reason === 'refusal') throw new Error(`Model declined (${response.stop_details?.category ?? 'unspecified'})`);
-      if (response.stop_reason === 'max_tokens') throw new Error('Model output truncated at max_tokens');
+      if (response.stop_reason === 'refusal')
+        throw new Error(`Model declined (${response.stop_details?.category ?? 'unspecified'})`);
+      if (response.stop_reason === 'max_tokens')
+        throw new Error('Model output truncated at max_tokens');
       const parsed = response.parsed_output as T | null;
       if (!parsed) throw new Error('Model output did not match the required schema');
       const problem = validate(parsed);
       if (problem) throw new Error(`Model output rejected by validation: ${problem}`);
-      return { output: parsed, mode: 'claude', model: response.model, latencyMs: Date.now() - t0, valid: true, error: null };
+      return {
+        output: parsed,
+        mode: 'claude',
+        model: response.model,
+        latencyMs: Date.now() - t0,
+        valid: true,
+        error: null,
+      };
     } catch (err) {
       const message =
-        err instanceof Anthropic.APIError ? `Anthropic API error ${err.status ?? ''}: ${err.message}` : (err as Error).message;
-      return { output: fallback(), mode: 'deterministic', model: this.model, latencyMs: Date.now() - t0, valid: false, error: message };
+        err instanceof Anthropic.APIError
+          ? `Anthropic API error ${err.status ?? ''}: ${err.message}`
+          : (err as Error).message;
+      return {
+        output: fallback(),
+        mode: 'deterministic',
+        model: this.model,
+        latencyMs: Date.now() - t0,
+        valid: false,
+        error: message,
+      };
     }
   }
 
@@ -144,9 +166,11 @@ ${blocks}`;
       (out) => {
         for (const s of out.selections) {
           const allowed = new Set((input.options[s.requirementId] ?? []).map((o) => o.candidateId));
-          if (!input.requirements.some((r) => r.id === s.requirementId)) return `unknown requirement ${s.requirementId}`;
+          if (!input.requirements.some((r) => r.id === s.requirementId))
+            return `unknown requirement ${s.requirementId}`;
           const foreign = s.candidateIds.find((id) => !allowed.has(id));
-          if (foreign) return `candidate ${foreign} was not offered for requirement ${s.requirementId}`;
+          if (foreign)
+            return `candidate ${foreign} was not offered for requirement ${s.requirementId}`;
         }
         return null;
       },

@@ -12,7 +12,14 @@ function offsetMinutes(utc: Date, timeZone: string): number {
     second: '2-digit',
   }).formatToParts(utc);
   const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
-  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+  const asUtc = Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour'),
+    get('minute'),
+    get('second'),
+  );
   return Math.round((asUtc - utc.getTime()) / 60_000);
 }
 
@@ -28,11 +35,25 @@ export function zonedToUtc(date: string, time: string, timeZone: string): Date {
 }
 
 /** Wall-clock parts of an instant in `timeZone`. */
-export function utcToZonedParts(instant: Date | string, timeZone: string): { date: string; time: string } {
+export function utcToZonedParts(
+  instant: Date | string,
+  timeZone: string,
+): { date: string; time: string } {
   const d = typeof instant === 'string' ? new Date(instant) : instant;
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(d);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
-  return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` };
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    time: `${get('hour')}:${get('minute')}`,
+  };
 }
 
 export function isValidTimeZone(tz: string): boolean {
@@ -48,5 +69,10 @@ export function isValidTimeZone(tz: string): boolean {
 export function localTime(instant: Date | string, timeZone: string | undefined): string {
   const d = typeof instant === 'string' ? new Date(instant) : instant;
   if (!timeZone) return d.toISOString();
-  return new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d);
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).format(d);
 }

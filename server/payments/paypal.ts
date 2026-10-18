@@ -44,7 +44,8 @@ function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
 
 export function toGatewayOrder(o: Order): GatewayOrder {
   const pu = o.purchaseUnits?.[0];
-  const link = o.links?.find((l) => l.rel === 'payer-action') ?? o.links?.find((l) => l.rel === 'approve');
+  const link =
+    o.links?.find((l) => l.rel === 'payer-action') ?? o.links?.find((l) => l.rel === 'approve');
   return {
     id: o.id ?? '',
     status: o.status ?? 'UNKNOWN',
@@ -63,7 +64,10 @@ export function toGatewayOrder(o: Order): GatewayOrder {
 }
 
 export function buildOrderRequest(input: CreateOrderInput): OrderRequest {
-  const money = (cents: number) => ({ currencyCode: input.currency, value: centsToDecimalString(cents) });
+  const money = (cents: number) => ({
+    currencyCode: input.currency,
+    value: centsToDecimalString(cents),
+  });
   return {
     intent: CheckoutPaymentIntent.Capture,
     purchaseUnits: [
@@ -74,7 +78,10 @@ export function buildOrderRequest(input: CreateOrderInput): OrderRequest {
         description: input.description.slice(0, 127),
         amount: {
           ...money(input.totalCents),
-          breakdown: { itemTotal: money(input.itemTotalCents), shipping: money(input.shippingCents) },
+          breakdown: {
+            itemTotal: money(input.itemTotalCents),
+            shipping: money(input.shippingCents),
+          },
         },
         items: input.items.map((i) => ({
           name: i.name.slice(0, 127),
@@ -126,7 +133,10 @@ export class PayPalGateway implements PaymentGateway {
 
   constructor(opts: PayPalOptions) {
     const client = new Client({
-      clientCredentialsAuthCredentials: { oAuthClientId: opts.clientId, oAuthClientSecret: opts.clientSecret },
+      clientCredentialsAuthCredentials: {
+        oAuthClientId: opts.clientId,
+        oAuthClientSecret: opts.clientSecret,
+      },
       environment: Environment.Sandbox,
       timeout: opts.timeoutMs,
       httpClientOptions: {
@@ -148,16 +158,26 @@ export class PayPalGateway implements PaymentGateway {
     this.overallMs = opts.timeoutMs * 2 + 8_000;
   }
 
-  private async call(fn: () => Promise<{ result: Order; headers: Record<string, string> }>, stateChanging: boolean): Promise<GatewayResult<GatewayOrder>> {
+  private async call(
+    fn: () => Promise<{ result: Order; headers: Record<string, string> }>,
+    stateChanging: boolean,
+  ): Promise<GatewayResult<GatewayOrder>> {
     try {
       const res = await withDeadline(fn(), this.overallMs);
-      return { kind: 'ok', value: toGatewayOrder(res.result), debugId: res.headers['paypal-debug-id'] ?? null };
+      return {
+        kind: 'ok',
+        value: toGatewayOrder(res.result),
+        debugId: res.headers['paypal-debug-id'] ?? null,
+      };
     } catch (err) {
       if (err instanceof ApiError) {
         const body = parseErrorBody(err);
         // A 5xx on a state-changing call is ambiguous: PayPal may or may not have acted.
         if (err.statusCode >= 500 && stateChanging) {
-          return { kind: 'ambiguous', reason: `PayPal returned HTTP ${err.statusCode} (${body.debug_id ?? 'no debug id'})` };
+          return {
+            kind: 'ambiguous',
+            reason: `PayPal returned HTTP ${err.statusCode} (${body.debug_id ?? 'no debug id'})`,
+          };
         }
         return {
           kind: 'rejected',
@@ -169,15 +189,30 @@ export class PayPalGateway implements PaymentGateway {
         };
       }
       // Timeouts, connection resets and DNS failures: the request may have reached PayPal.
-      const reason = err instanceof DeadlineExceeded ? err.message : `Transport error: ${(err as Error).message}`;
+      const reason =
+        err instanceof DeadlineExceeded
+          ? err.message
+          : `Transport error: ${(err as Error).message}`;
       if (stateChanging) return { kind: 'ambiguous', reason };
-      return { kind: 'rejected', status: 0, name: 'TRANSPORT_ERROR', message: reason, issues: [], debugId: null };
+      return {
+        kind: 'rejected',
+        status: 0,
+        name: 'TRANSPORT_ERROR',
+        message: reason,
+        issues: [],
+        debugId: null,
+      };
     }
   }
 
   createOrder(input: CreateOrderInput) {
     return this.call(
-      () => this.orders.createOrder({ body: buildOrderRequest(input), paypalRequestId: input.requestId, prefer: 'return=representation' }),
+      () =>
+        this.orders.createOrder({
+          body: buildOrderRequest(input),
+          paypalRequestId: input.requestId,
+          prefer: 'return=representation',
+        }),
       true,
     );
   }
@@ -188,7 +223,12 @@ export class PayPalGateway implements PaymentGateway {
 
   captureOrder(orderId: string, requestId: string) {
     return this.call(
-      () => this.orders.captureOrder({ id: orderId, paypalRequestId: requestId, prefer: 'return=representation' }),
+      () =>
+        this.orders.captureOrder({
+          id: orderId,
+          paypalRequestId: requestId,
+          prefer: 'return=representation',
+        }),
       true,
     );
   }

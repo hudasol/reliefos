@@ -13,10 +13,18 @@ export interface CandidateView extends ProductCandidate {
   selectedInActive: boolean;
 }
 
-export async function candidateViews(deps: Deps, workspaceId: string, missionId: string): Promise<CandidateView[]> {
+export async function candidateViews(
+  deps: Deps,
+  workspaceId: string,
+  missionId: string,
+): Promise<CandidateView[]> {
   const s = store(deps);
   const mission = await s.getMission(workspaceId, missionId);
-  const [candidates, quotes, proposals] = await Promise.all([s.listCandidates(missionId), s.currentQuotes(missionId), s.listProposals(missionId)]);
+  const [candidates, quotes, proposals] = await Promise.all([
+    s.listCandidates(missionId),
+    s.currentQuotes(missionId),
+    s.listProposals(missionId),
+  ]);
   const active = pickActiveProposal(proposals);
   const selected = new Set(active?.lines.map((l) => l.candidateId) ?? []);
   const deadline = new Date(mission.deadline);
@@ -28,7 +36,10 @@ export async function candidateViews(deps: Deps, workspaceId: string, missionId:
       quote,
       eligible: reasons.length === 0,
       exclusionReasons: reasons,
-      costPerUnitCents: quote && c.pack.unitsPerPack ? Math.round((quote.unitPriceCents + quote.shippingPerPackCents) / c.pack.unitsPerPack) : null,
+      costPerUnitCents:
+        quote && c.pack.unitsPerPack
+          ? Math.round((quote.unitPriceCents + quote.shippingPerPackCents) / c.pack.unitsPerPack)
+          : null,
       selectedInActive: selected.has(c.id),
     };
   });
@@ -54,9 +65,12 @@ export async function analytics(deps: Deps, workspaceId: string, missionId: stri
   const deadline = new Date(mission.deadline).getTime();
 
   const requirementRows = requirements.map((r) => {
-    const planned = active && !['REJECTED', 'INVALIDATED', 'FAILED', 'EXECUTED'].includes(active.status)
-      ? active.lines.filter((l) => l.requirementId === r.id).reduce((a, l) => a + l.unitsCovered, 0)
-      : 0;
+    const planned =
+      active && !['REJECTED', 'INVALIDATED', 'FAILED', 'EXECUTED'].includes(active.status)
+        ? active.lines
+            .filter((l) => l.requirementId === r.id)
+            .reduce((a, l) => a + l.unitsCovered, 0)
+        : 0;
     const purchased = purchasedUnits[r.id] ?? 0;
     return {
       id: r.id,
@@ -169,14 +183,35 @@ export async function analytics(deps: Deps, workspaceId: string, missionId: stri
   }));
 
   const spendRows = requirements.map((r) => {
-    const activeSpend = active ? active.lines.filter((l) => l.requirementId === r.id).reduce((a, l) => a + l.lineTotalCents, 0) : 0;
-    const executedSpend = proposals.filter((p) => p.status === 'EXECUTED').flatMap((p) => p.lines).filter((l) => l.requirementId === r.id).reduce((a, l) => a + l.lineTotalCents, 0);
-    return { id: r.id, category: r.category, requirement: r.label, planned: dollars(activeSpend), executed: dollars(executedSpend) };
+    const activeSpend = active
+      ? active.lines
+          .filter((l) => l.requirementId === r.id)
+          .reduce((a, l) => a + l.lineTotalCents, 0)
+      : 0;
+    const executedSpend = proposals
+      .filter((p) => p.status === 'EXECUTED')
+      .flatMap((p) => p.lines)
+      .filter((l) => l.requirementId === r.id)
+      .reduce((a, l) => a + l.lineTotalCents, 0);
+    return {
+      id: r.id,
+      category: r.category,
+      requirement: r.label,
+      planned: dollars(activeSpend),
+      executed: dollars(executedSpend),
+    };
   });
 
   return {
     asOf: deps.now().toISOString(),
-    mission: { id: mission.id, title: mission.title, status: mission.status, budget: dollars(mission.budgetCents), deadline: mission.deadline, catalogSource: mission.catalogSource },
+    mission: {
+      id: mission.id,
+      title: mission.title,
+      status: mission.status,
+      budget: dollars(mission.budgetCents),
+      deadline: mission.deadline,
+      catalogSource: mission.catalogSource,
+    },
     summary: detail.summary,
     requirements: requirementRows,
     lines: lineRows,
@@ -199,18 +234,35 @@ export async function missionReport(deps: Deps, workspaceId: string, missionId: 
     s.verifyAuditChain(workspaceId),
   ]);
   const executed = detail.proposals.filter((p) => p.status === 'EXECUTED');
-  const provenance = candidates.reduce<Record<string, number>>((acc, c) => ({ ...acc, [c.provenance]: (acc[c.provenance] ?? 0) + 1 }), {});
+  const provenance = candidates.reduce<Record<string, number>>(
+    (acc, c) => ({ ...acc, [c.provenance]: (acc[c.provenance] ?? 0) + 1 }),
+    {},
+  );
   return {
     mission: detail.mission,
     summary: detail.summary,
     requirements: detail.requirements,
     executedProposals: executed,
     verifiedPayments: detail.payments.filter((p) => p.status === 'COMPLETED' && p.verifiedAt),
-    unresolvedPayments: detail.payments.filter((p) => ['UNKNOWN', 'PROVIDER_PENDING'].includes(p.status)),
+    unresolvedPayments: detail.payments.filter((p) =>
+      ['UNKNOWN', 'PROVIDER_PENDING'].includes(p.status),
+    ),
     confirmedDeliveries: tasks.filter((t) => t.status === 'CONFIRMED'),
-    rejectedProposals: detail.proposals.filter((p) => ['REJECTED', 'INVALIDATED'].includes(p.status)).map((p) => ({ version: p.version, status: p.status, createdBy: p.createdBy, violations: p.latestDecision?.violations ?? [] })),
+    rejectedProposals: detail.proposals
+      .filter((p) => ['REJECTED', 'INVALIDATED'].includes(p.status))
+      .map((p) => ({
+        version: p.version,
+        status: p.status,
+        createdBy: p.createdBy,
+        violations: p.latestDecision?.violations ?? [],
+      })),
     security: securityRuns[0] ?? null,
-    audit: { events: audit.length, chainIntact: chain.intact, chainEvents: chain.events, brokenAt: chain.brokenAt },
+    audit: {
+      events: audit.length,
+      chainIntact: chain.intact,
+      chainEvents: chain.events,
+      brokenAt: chain.brokenAt,
+    },
     dataProvenance: provenance,
     assumptions: PLANNING_ASSUMPTIONS,
     policyChecks: POLICY_CHECK_CATALOG,

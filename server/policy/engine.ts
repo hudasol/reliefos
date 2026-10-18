@@ -81,7 +81,12 @@ interface CheckDef {
 
 const ALL: PolicyStage[] = ['validation', 'approval', 'execution', 'capture'];
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
-const v = (checkId: string, message: string, lineId: string | null = null, evidence: Record<string, unknown> = {}): PolicyViolation => ({
+const v = (
+  checkId: string,
+  message: string,
+  lineId: string | null = null,
+  evidence: Record<string, unknown> = {},
+): PolicyViolation => ({
   checkId,
   message,
   lineId,
@@ -94,7 +99,8 @@ const v = (checkId: string, message: string, lineId: string | null = null, evide
  */
 function recomputedTotals(ctx: PolicyContext, basis: 'proposal' | 'current') {
   const lines: PlannedLine[] = ctx.proposal.lines.map((l) => {
-    const q = basis === 'current' ? ctx.currentQuotes.get(l.candidateId) : ctx.quotesById.get(l.quoteId);
+    const q =
+      basis === 'current' ? ctx.currentQuotes.get(l.candidateId) : ctx.quotesById.get(l.quoteId);
     const unitPriceCents = basis === 'current' && q ? q.unitPriceCents : l.unitPriceCents;
     return {
       requirementId: l.requirementId,
@@ -130,7 +136,14 @@ const CHECKS: CheckDef[] = [
       return allowed.includes(ctx.mission.status)
         ? { violations: [], detail: `Mission ${ctx.mission.status} permits ${ctx.stage}` }
         : {
-            violations: [v('MISSION_STATE', `Mission status ${ctx.mission.status} does not permit ${ctx.stage}`, null, { allowed })],
+            violations: [
+              v(
+                'MISSION_STATE',
+                `Mission status ${ctx.mission.status} does not permit ${ctx.stage}`,
+                null,
+                { allowed },
+              ),
+            ],
             detail: 'Mission state blocks this action',
           };
     },
@@ -145,10 +158,15 @@ const CHECKS: CheckDef[] = [
         ? { violations: [], detail: `Mission version ${ctx.mission.version}` }
         : {
             violations: [
-              v('MISSION_VERSION_CURRENT', `Mission terms changed after this proposal was planned (v${ctx.proposal.missionVersion} → v${ctx.mission.version})`, null, {
-                proposalMissionVersion: ctx.proposal.missionVersion,
-                currentMissionVersion: ctx.mission.version,
-              }),
+              v(
+                'MISSION_VERSION_CURRENT',
+                `Mission terms changed after this proposal was planned (v${ctx.proposal.missionVersion} → v${ctx.mission.version})`,
+                null,
+                {
+                  proposalMissionVersion: ctx.proposal.missionVersion,
+                  currentMissionVersion: ctx.mission.version,
+                },
+              ),
             ],
             detail: 'Stale mission version',
           },
@@ -161,13 +179,22 @@ const CHECKS: CheckDef[] = [
     run: (ctx) => {
       const out: PolicyViolation[] = [];
       if (ctx.proposal.currency !== ctx.mission.currency) {
-        out.push(v('CURRENCY_MATCH', `Proposal currency ${ctx.proposal.currency} ≠ mission currency ${ctx.mission.currency}`));
+        out.push(
+          v(
+            'CURRENCY_MATCH',
+            `Proposal currency ${ctx.proposal.currency} ≠ mission currency ${ctx.mission.currency}`,
+          ),
+        );
       }
       for (const l of ctx.proposal.lines) {
         const c = ctx.candidates.get(l.candidateId);
-        if (c && c.currency !== ctx.mission.currency) out.push(v('CURRENCY_MATCH', `Listing priced in ${c.currency}`, l.id));
+        if (c && c.currency !== ctx.mission.currency)
+          out.push(v('CURRENCY_MATCH', `Listing priced in ${c.currency}`, l.id));
       }
-      return { violations: out, detail: out.length ? 'Currency mismatch' : `All amounts in ${ctx.mission.currency}` };
+      return {
+        violations: out,
+        detail: out.length ? 'Currency mismatch' : `All amounts in ${ctx.mission.currency}`,
+      };
     },
   },
   {
@@ -178,21 +205,42 @@ const CHECKS: CheckDef[] = [
     run: (ctx) => {
       const reqIds = new Set(ctx.requirements.map((r) => r.id));
       const out: PolicyViolation[] = [];
-      if (ctx.proposal.lines.length === 0) out.push(v('REQUIREMENT_LINKAGE', 'Proposal has no lines'));
+      if (ctx.proposal.lines.length === 0)
+        out.push(v('REQUIREMENT_LINKAGE', 'Proposal has no lines'));
       for (const l of ctx.proposal.lines) {
         const c = ctx.candidates.get(l.candidateId);
-        if (!reqIds.has(l.requirementId)) out.push(v('REQUIREMENT_LINKAGE', 'Line does not belong to an active mission requirement', l.id));
-        else if (!c) out.push(v('REQUIREMENT_LINKAGE', 'Line references a product that was never retrieved for this mission', l.id));
+        if (!reqIds.has(l.requirementId))
+          out.push(
+            v('REQUIREMENT_LINKAGE', 'Line does not belong to an active mission requirement', l.id),
+          );
+        else if (!c)
+          out.push(
+            v(
+              'REQUIREMENT_LINKAGE',
+              'Line references a product that was never retrieved for this mission',
+              l.id,
+            ),
+          );
         else if (c.missionId !== ctx.mission.id || c.requirementId !== l.requirementId) {
           out.push(
-            v('REQUIREMENT_LINKAGE', `Unauthorized substitution: "${c.title}" was retrieved for a different requirement`, l.id, {
-              candidateRequirement: c.requirementId,
-              lineRequirement: l.requirementId,
-            }),
+            v(
+              'REQUIREMENT_LINKAGE',
+              `Unauthorized substitution: "${c.title}" was retrieved for a different requirement`,
+              l.id,
+              {
+                candidateRequirement: c.requirementId,
+                lineRequirement: l.requirementId,
+              },
+            ),
           );
         }
       }
-      return { violations: out, detail: out.length ? 'Unlinked or substituted lines' : `${ctx.proposal.lines.length} lines linked` };
+      return {
+        violations: out,
+        detail: out.length
+          ? 'Unlinked or substituted lines'
+          : `${ctx.proposal.lines.length} lines linked`,
+      };
     },
   },
   {
@@ -208,9 +256,20 @@ const CHECKS: CheckDef[] = [
         const r = reqs.get(l.requirementId);
         if (!c || !r) continue;
         const res = checkSpec(r.spec, c, parseAttributes(c.title, c.description));
-        if (!res.passed) out.push(v('SPEC_COMPLIANCE', `"${c.title}" does not meet "${r.label}": ${res.reasons.join('; ')}`, l.id, { reasons: res.reasons }));
+        if (!res.passed)
+          out.push(
+            v(
+              'SPEC_COMPLIANCE',
+              `"${c.title}" does not meet "${r.label}": ${res.reasons.join('; ')}`,
+              l.id,
+              { reasons: res.reasons },
+            ),
+          );
       }
-      return { violations: out, detail: out.length ? 'Specification failures' : 'All products meet specification' };
+      return {
+        violations: out,
+        detail: out.length ? 'Specification failures' : 'All products meet specification',
+      };
     },
   },
   {
@@ -223,16 +282,28 @@ const CHECKS: CheckDef[] = [
       for (const l of ctx.proposal.lines) {
         const c = ctx.candidates.get(l.candidateId);
         if (!c) continue;
-        const flags = scanContent({ title: c.title, description: c.description, merchant: c.merchantDomain });
+        const flags = scanContent({
+          title: c.title,
+          description: c.description,
+          merchant: c.merchantDomain,
+        });
         if (c.quarantined || isBlocking(flags)) {
           out.push(
-            v('CONTENT_QUARANTINE', `Listing "${c.title}" contains prompt-injection content and is quarantined`, l.id, {
-              flags: flags.length ? flags : c.contentFlags,
-            }),
+            v(
+              'CONTENT_QUARANTINE',
+              `Listing "${c.title}" contains prompt-injection content and is quarantined`,
+              l.id,
+              {
+                flags: flags.length ? flags : c.contentFlags,
+              },
+            ),
           );
         }
       }
-      return { violations: out, detail: out.length ? 'Quarantined content present' : 'No injection content detected' };
+      return {
+        violations: out,
+        detail: out.length ? 'Quarantined content present' : 'No injection content detected',
+      };
     },
   },
   {
@@ -249,12 +320,24 @@ const CHECKS: CheckDef[] = [
         if (!c.sourceProductId) missing.push('source product id');
         if (c.priceCents === null) missing.push('listed price');
         if (!c.pack.unitsPerPack || !c.pack.evidence) missing.push('pack size evidence');
-        if (missing.length) out.push(v('EVIDENCE_PRESENT', `"${c.title}" lacks ${missing.join(', ')}`, l.id, { missing }));
+        if (missing.length)
+          out.push(
+            v('EVIDENCE_PRESENT', `"${c.title}" lacks ${missing.join(', ')}`, l.id, { missing }),
+          );
         else if (Math.floor(l.quantityPacks * c.pack.unitsPerPack!) !== l.unitsCovered) {
-          out.push(v('EVIDENCE_PRESENT', `Claimed coverage ${l.unitsCovered} does not follow from ${l.quantityPacks} × ${c.pack.unitsPerPack}`, l.id));
+          out.push(
+            v(
+              'EVIDENCE_PRESENT',
+              `Claimed coverage ${l.unitsCovered} does not follow from ${l.quantityPacks} × ${c.pack.unitsPerPack}`,
+              l.id,
+            ),
+          );
         }
       }
-      return { violations: out, detail: out.length ? 'Missing evidence' : 'Evidence present for all lines' };
+      return {
+        violations: out,
+        detail: out.length ? 'Missing evidence' : 'Evidence present for all lines',
+      };
     },
   },
   {
@@ -272,18 +355,33 @@ const CHECKS: CheckDef[] = [
         }
         if (q.unitPriceCents !== l.unitPriceCents) {
           out.push(
-            v('PRICE_INTEGRITY', `Price changed after selection for "${l.title}": ${money(l.unitPriceCents)} → ${money(q.unitPriceCents)} per pack`, l.id, {
-              proposedUnitPriceCents: l.unitPriceCents,
-              currentUnitPriceCents: q.unitPriceCents,
-              quoteId: q.id,
-              quoteReason: q.reason,
-            }),
+            v(
+              'PRICE_INTEGRITY',
+              `Price changed after selection for "${l.title}": ${money(l.unitPriceCents)} → ${money(q.unitPriceCents)} per pack`,
+              l.id,
+              {
+                proposedUnitPriceCents: l.unitPriceCents,
+                currentUnitPriceCents: q.unitPriceCents,
+                quoteId: q.id,
+                quoteReason: q.reason,
+              },
+            ),
           );
         } else if (q.id !== l.quoteId) {
-          out.push(v('PRICE_INTEGRITY', `Supplier commitment for "${l.title}" was revised after selection (${q.reason})`, l.id, { proposedQuoteId: l.quoteId, currentQuoteId: q.id }));
+          out.push(
+            v(
+              'PRICE_INTEGRITY',
+              `Supplier commitment for "${l.title}" was revised after selection (${q.reason})`,
+              l.id,
+              { proposedQuoteId: l.quoteId, currentQuoteId: q.id },
+            ),
+          );
         }
       }
-      return { violations: out, detail: out.length ? 'Price or quote drift' : 'All prices match current commitments' };
+      return {
+        violations: out,
+        detail: out.length ? 'Price or quote drift' : 'All prices match current commitments',
+      };
     },
   },
   {
@@ -297,18 +395,45 @@ const CHECKS: CheckDef[] = [
       const out: PolicyViolation[] = [];
       for (const l of p.lines) {
         if (l.lineTotalCents !== l.quantityPacks * l.unitPriceCents) {
-          out.push(v('ARITHMETIC_INTEGRITY', `Line total ${money(l.lineTotalCents)} ≠ ${l.quantityPacks} × ${money(l.unitPriceCents)}`, l.id));
+          out.push(
+            v(
+              'ARITHMETIC_INTEGRITY',
+              `Line total ${money(l.lineTotalCents)} ≠ ${l.quantityPacks} × ${money(l.unitPriceCents)}`,
+              l.id,
+            ),
+          );
         }
       }
-      if (p.subtotalCents !== r.subtotal || p.shippingCents !== r.shippingTotal || p.totalCents !== r.total) {
+      if (
+        p.subtotalCents !== r.subtotal ||
+        p.shippingCents !== r.shippingTotal ||
+        p.totalCents !== r.total
+      ) {
         out.push(
-          v('ARITHMETIC_INTEGRITY', `Declared total ${money(p.totalCents)} ≠ recomputed ${money(r.total)} (subtotal ${money(r.subtotal)} + shipping ${money(r.shippingTotal)})`, null, {
-            declared: { subtotal: p.subtotalCents, shipping: p.shippingCents, total: p.totalCents },
-            recomputed: { subtotal: r.subtotal, shipping: r.shippingTotal, total: r.total, shippingByMerchant: r.shipping },
-          }),
+          v(
+            'ARITHMETIC_INTEGRITY',
+            `Declared total ${money(p.totalCents)} ≠ recomputed ${money(r.total)} (subtotal ${money(r.subtotal)} + shipping ${money(r.shippingTotal)})`,
+            null,
+            {
+              declared: {
+                subtotal: p.subtotalCents,
+                shipping: p.shippingCents,
+                total: p.totalCents,
+              },
+              recomputed: {
+                subtotal: r.subtotal,
+                shipping: r.shippingTotal,
+                total: r.total,
+                shippingByMerchant: r.shipping,
+              },
+            },
+          ),
         );
       }
-      return { violations: out, detail: out.length ? 'Totals do not reconcile' : `Recomputed total ${money(r.total)}` };
+      return {
+        violations: out,
+        detail: out.length ? 'Totals do not reconcile' : `Recomputed total ${money(r.total)}`,
+      };
     },
   },
   {
@@ -325,13 +450,18 @@ const CHECKS: CheckDef[] = [
         ? { violations: [], detail: `${money(total)} within ${money(available)} available` }
         : {
             violations: [
-              v('BUDGET_CAP', `Total ${money(total)} exceeds available authority ${money(available)} by ${money(total - available)}`, null, {
-                totalCents: total,
-                shippingCents: r.shippingTotal,
-                budgetCents: ctx.mission.budgetCents,
-                committedCents: ctx.committedCents,
-                availableCents: available,
-              }),
+              v(
+                'BUDGET_CAP',
+                `Total ${money(total)} exceeds available authority ${money(available)} by ${money(total - available)}`,
+                null,
+                {
+                  totalCents: total,
+                  shippingCents: r.shippingTotal,
+                  budgetCents: ctx.mission.budgetCents,
+                  committedCents: ctx.committedCents,
+                  availableCents: available,
+                },
+              ),
             ],
             detail: 'Over budget',
           };
@@ -347,25 +477,37 @@ const CHECKS: CheckDef[] = [
       for (const r of ctx.requirements) {
         const lines = ctx.proposal.lines.filter((l) => l.requirementId === r.id);
         if (lines.length === 0) continue;
-        const maxPack = Math.max(...lines.map((l) => ctx.candidates.get(l.candidateId)?.pack.unitsPerPack ?? 0));
-        const planned = lines.reduce((s, l) => s + l.unitsCovered, 0) + (ctx.purchasedUnits[r.id] ?? 0);
+        const maxPack = Math.max(
+          ...lines.map((l) => ctx.candidates.get(l.candidateId)?.pack.unitsPerPack ?? 0),
+        );
+        const planned =
+          lines.reduce((s, l) => s + l.unitsCovered, 0) + (ctx.purchasedUnits[r.id] ?? 0);
         const limit = r.quantity + Math.ceil(maxPack);
         if (planned > limit) {
           out.push(
-            v('QUANTITY_BOUNDS', `${r.label}: ${planned} ${r.unit} exceeds authorised need of ${r.quantity} (limit ${limit} with pack rounding)`, lines[0]!.id, {
-              requirementId: r.id,
-              plannedUnits: planned,
-              neededUnits: r.quantity,
-              limit,
-              alreadyPurchased: ctx.purchasedUnits[r.id] ?? 0,
-            }),
+            v(
+              'QUANTITY_BOUNDS',
+              `${r.label}: ${planned} ${r.unit} exceeds authorised need of ${r.quantity} (limit ${limit} with pack rounding)`,
+              lines[0]!.id,
+              {
+                requirementId: r.id,
+                plannedUnits: planned,
+                neededUnits: r.quantity,
+                limit,
+                alreadyPurchased: ctx.purchasedUnits[r.id] ?? 0,
+              },
+            ),
           );
         }
       }
       for (const l of ctx.proposal.lines) {
-        if (!Number.isInteger(l.quantityPacks) || l.quantityPacks <= 0) out.push(v('QUANTITY_BOUNDS', 'Pack quantity must be a positive integer', l.id));
+        if (!Number.isInteger(l.quantityPacks) || l.quantityPacks <= 0)
+          out.push(v('QUANTITY_BOUNDS', 'Pack quantity must be a positive integer', l.id));
       }
-      return { violations: out, detail: out.length ? 'Quantity exceeds authority' : 'Quantities within need' };
+      return {
+        violations: out,
+        detail: out.length ? 'Quantity exceeds authority' : 'Quantities within need',
+      };
     },
   },
   {
@@ -378,7 +520,14 @@ const CHECKS: CheckDef[] = [
       for (const l of ctx.proposal.lines) {
         const q = ctx.currentQuotes.get(l.candidateId);
         if (q && l.quantityPacks > q.stockPacks) {
-          out.push(v('STOCK_AVAILABLE', `"${l.title}": ${l.quantityPacks} packs requested, supplier commits ${q.stockPacks}`, l.id, { requested: l.quantityPacks, stock: q.stockPacks }));
+          out.push(
+            v(
+              'STOCK_AVAILABLE',
+              `"${l.title}": ${l.quantityPacks} packs requested, supplier commits ${q.stockPacks}`,
+              l.id,
+              { requested: l.quantityPacks, stock: q.stockPacks },
+            ),
+          );
         }
       }
       return { violations: out, detail: out.length ? 'Insufficient stock' : 'Stock sufficient' };
@@ -397,15 +546,23 @@ const CHECKS: CheckDef[] = [
         const eta = new Date(q?.eta ?? l.eta).getTime();
         if (eta > latest) {
           out.push(
-            v('DELIVERY_DEADLINE', `"${l.title}" now arrives ${localTime(new Date(eta), ctx.mission.timezone)}, after the ${localTime(new Date(latest), ctx.mission.timezone)} intake cutoff`, l.id, {
-              eta: new Date(eta).toISOString(),
-              deadline: ctx.mission.deadline,
-              intakeBufferMinutes: INTAKE_BUFFER_MINUTES,
-            }),
+            v(
+              'DELIVERY_DEADLINE',
+              `"${l.title}" now arrives ${localTime(new Date(eta), ctx.mission.timezone)}, after the ${localTime(new Date(latest), ctx.mission.timezone)} intake cutoff`,
+              l.id,
+              {
+                eta: new Date(eta).toISOString(),
+                deadline: ctx.mission.deadline,
+                intakeBufferMinutes: INTAKE_BUFFER_MINUTES,
+              },
+            ),
           );
         }
       }
-      return { violations: out, detail: out.length ? 'Deadline violated' : 'All deliveries before cutoff' };
+      return {
+        violations: out,
+        detail: out.length ? 'Deadline violated' : 'All deliveries before cutoff',
+      };
     },
   },
   {
@@ -416,30 +573,71 @@ const CHECKS: CheckDef[] = [
     run: (ctx) => {
       const a = ctx.approval;
       const p = ctx.proposal;
-      if (!a) return { violations: [v('APPROVAL_BINDING', 'No human approval exists for this proposal')], detail: 'Approval missing' };
+      if (!a)
+        return {
+          violations: [v('APPROVAL_BINDING', 'No human approval exists for this proposal')],
+          detail: 'Approval missing',
+        };
       const out: PolicyViolation[] = [];
       const currentHash = materialTermsHash({
         missionId: p.missionId,
         missionVersion: p.missionVersion,
         currency: p.currency,
-        lines: p.lines.map((l) => ({ requirementId: l.requirementId, candidateId: l.candidateId, quoteId: l.quoteId, quantityPacks: l.quantityPacks, unitPriceCents: l.unitPriceCents })),
+        lines: p.lines.map((l) => ({
+          requirementId: l.requirementId,
+          candidateId: l.candidateId,
+          quoteId: l.quoteId,
+          quantityPacks: l.quantityPacks,
+          unitPriceCents: l.unitPriceCents,
+        })),
         shipping: p.shipping,
         subtotalCents: p.subtotalCents,
         shippingCents: p.shippingCents,
         totalCents: p.totalCents,
       });
-      if (a.status !== 'ACTIVE') out.push(v('APPROVAL_BINDING', `Approval is ${a.status}${a.invalidatedReason ? `: ${a.invalidatedReason}` : ''}`));
-      if (a.proposalId !== p.id) out.push(v('APPROVAL_BINDING', 'Approval belongs to a different proposal', null, { approvalProposal: a.proposalId }));
+      if (a.status !== 'ACTIVE')
+        out.push(
+          v(
+            'APPROVAL_BINDING',
+            `Approval is ${a.status}${a.invalidatedReason ? `: ${a.invalidatedReason}` : ''}`,
+          ),
+        );
+      if (a.proposalId !== p.id)
+        out.push(
+          v('APPROVAL_BINDING', 'Approval belongs to a different proposal', null, {
+            approvalProposal: a.proposalId,
+          }),
+        );
       if (a.contentHash !== currentHash || currentHash !== p.contentHash) {
-        out.push(v('APPROVAL_BINDING', 'Proposal terms changed after approval; the approval cannot be reused', null, { approvedHash: a.contentHash, currentHash }));
+        out.push(
+          v(
+            'APPROVAL_BINDING',
+            'Proposal terms changed after approval; the approval cannot be reused',
+            null,
+            { approvedHash: a.contentHash, currentHash },
+          ),
+        );
       }
       if (a.missionVersion !== ctx.mission.version) {
-        out.push(v('APPROVAL_BINDING', `Mission terms changed after approval (v${a.missionVersion} → v${ctx.mission.version})`));
+        out.push(
+          v(
+            'APPROVAL_BINDING',
+            `Mission terms changed after approval (v${a.missionVersion} → v${ctx.mission.version})`,
+          ),
+        );
       }
       if (a.amountCents !== p.totalCents || a.currency !== p.currency) {
-        out.push(v('APPROVAL_BINDING', `Approved amount ${money(a.amountCents)} ≠ proposal total ${money(p.totalCents)}`));
+        out.push(
+          v(
+            'APPROVAL_BINDING',
+            `Approved amount ${money(a.amountCents)} ≠ proposal total ${money(p.totalCents)}`,
+          ),
+        );
       }
-      return { violations: out, detail: out.length ? 'Approval does not bind these terms' : `Approved by ${a.approverName}` };
+      return {
+        violations: out,
+        detail: out.length ? 'Approval does not bind these terms' : `Approved by ${a.approverName}`,
+      };
     },
   },
   {
@@ -449,16 +647,24 @@ const CHECKS: CheckDef[] = [
     stages: ['execution', 'capture'],
     run: (ctx) => {
       const dupes = ctx.paymentOps.filter(
-        (op) => op.proposalId === ctx.proposal.id && op.id !== ctx.currentPaymentOpId && BLOCKING_PAYMENT_STATUSES.includes(op.status),
+        (op) =>
+          op.proposalId === ctx.proposal.id &&
+          op.id !== ctx.currentPaymentOpId &&
+          BLOCKING_PAYMENT_STATUSES.includes(op.status),
       );
       return dupes.length === 0
         ? { violations: [], detail: 'No competing payment operation' }
         : {
             violations: [
-              v('NO_DUPLICATE_EXECUTION', `A payment operation is already ${dupes[0]!.status} for this proposal`, null, {
-                operationIds: dupes.map((d) => d.id),
-                statuses: dupes.map((d) => d.status),
-              }),
+              v(
+                'NO_DUPLICATE_EXECUTION',
+                `A payment operation is already ${dupes[0]!.status} for this proposal`,
+                null,
+                {
+                  operationIds: dupes.map((d) => d.id),
+                  statuses: dupes.map((d) => d.status),
+                },
+              ),
             ],
             detail: 'Duplicate purchase attempt',
           };
@@ -470,14 +676,21 @@ const CHECKS: CheckDef[] = [
     hard: true,
     stages: ['execution'],
     run: (ctx) => {
-      const unresolved = ctx.paymentOps.filter((op) => op.id !== ctx.currentPaymentOpId && UNRESOLVED_PAYMENT_STATUSES.includes(op.status));
+      const unresolved = ctx.paymentOps.filter(
+        (op) => op.id !== ctx.currentPaymentOpId && UNRESOLVED_PAYMENT_STATUSES.includes(op.status),
+      );
       return unresolved.length === 0
         ? { violations: [], detail: 'All prior payment outcomes resolved' }
         : {
             violations: [
-              v('NO_UNRESOLVED_PAYMENTS', `Payment ${unresolved[0]!.id.slice(0, 8)} is ${unresolved[0]!.status}; reconcile it with PayPal before any new purchase`, null, {
-                operationIds: unresolved.map((u) => u.id),
-              }),
+              v(
+                'NO_UNRESOLVED_PAYMENTS',
+                `Payment ${unresolved[0]!.id.slice(0, 8)} is ${unresolved[0]!.status}; reconcile it with PayPal before any new purchase`,
+                null,
+                {
+                  operationIds: unresolved.map((u) => u.id),
+                },
+              ),
             ],
             detail: 'Unresolved payment outcome',
           };
@@ -493,15 +706,30 @@ function warnings(ctx: PolicyContext): PolicyViolation[] {
     const eta = new Date(q?.eta ?? l.eta).getTime();
     const slackMin = (deadline - eta) / 60_000;
     if (slackMin >= INTAKE_BUFFER_MINUTES && slackMin < AT_RISK_MINUTES + INTAKE_BUFFER_MINUTES) {
-      out.push(v('DELIVERY_AT_RISK', `"${l.title}" arrives with only ${Math.round(slackMin)} min before the deadline`, l.id));
+      out.push(
+        v(
+          'DELIVERY_AT_RISK',
+          `"${l.title}" arrives with only ${Math.round(slackMin)} min before the deadline`,
+          l.id,
+        ),
+      );
     }
     if (l.provenance !== 'channel3') {
-      out.push(v('NON_LIVE_DATA', `"${l.title}" comes from ${l.provenance} data, not live Channel3 results`, l.id));
+      out.push(
+        v(
+          'NON_LIVE_DATA',
+          `"${l.title}" comes from ${l.provenance} data, not live Channel3 results`,
+          l.id,
+        ),
+      );
     }
   }
   for (const r of ctx.requirements.filter((x) => x.priority === 'critical')) {
-    const merchants = new Set(ctx.proposal.lines.filter((l) => l.requirementId === r.id).map((l) => l.merchantDomain));
-    if (merchants.size === 1) out.push(v('SINGLE_SOURCE', `${r.label} depends on a single supplier`));
+    const merchants = new Set(
+      ctx.proposal.lines.filter((l) => l.requirementId === r.id).map((l) => l.merchantDomain),
+    );
+    if (merchants.size === 1)
+      out.push(v('SINGLE_SOURCE', `${r.label} depends on a single supplier`));
   }
   return out;
 }
@@ -512,7 +740,13 @@ export function evaluatePolicy(ctx: PolicyContext): PolicyEvaluation {
   for (const def of CHECKS) {
     if (!def.stages.includes(ctx.stage)) continue;
     const res = def.run(ctx);
-    checks.push({ checkId: def.id, title: def.title, hard: def.hard, passed: res.violations.length === 0, detail: res.detail });
+    checks.push({
+      checkId: def.id,
+      title: def.title,
+      hard: def.hard,
+      passed: res.violations.length === 0,
+      detail: res.detail,
+    });
     if (def.hard) violations.push(...res.violations);
   }
   return {
@@ -524,4 +758,9 @@ export function evaluatePolicy(ctx: PolicyContext): PolicyEvaluation {
   };
 }
 
-export const POLICY_CHECK_CATALOG = CHECKS.map(({ id, title, hard, stages }) => ({ id, title, hard, stages }));
+export const POLICY_CHECK_CATALOG = CHECKS.map(({ id, title, hard, stages }) => ({
+  id,
+  title,
+  hard,
+  stages,
+}));

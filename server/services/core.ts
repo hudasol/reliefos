@@ -27,20 +27,29 @@ export interface Deps {
 export const newId = () => randomUUID();
 
 export function agentFor(deps: Deps, mission: Pick<Mission, 'plannerMode'>): MissionAgent {
-  return mission.plannerMode === 'claude' && deps.claudeAgent ? deps.claudeAgent : deps.deterministicAgent;
+  return mission.plannerMode === 'claude' && deps.claudeAgent
+    ? deps.claudeAgent
+    : deps.deterministicAgent;
 }
 
 /** Spend held by other proposals' payment operations, and units bought by other executed proposals. */
-export async function missionCommitments(store: Store, missionId: string, excludeProposalId: string | null) {
+export async function missionCommitments(
+  store: Store,
+  missionId: string,
+  excludeProposalId: string | null,
+) {
   const payments = await store.listPayments(missionId);
   const proposals = await store.listProposals(missionId);
   const committedCents = payments
-    .filter((p) => p.proposalId !== excludeProposalId && BLOCKING_PAYMENT_STATUSES.includes(p.status))
+    .filter(
+      (p) => p.proposalId !== excludeProposalId && BLOCKING_PAYMENT_STATUSES.includes(p.status),
+    )
     .reduce((s, p) => s + p.amountCents, 0);
   const purchasedUnits: Record<string, number> = {};
   for (const p of proposals) {
     if (p.id === excludeProposalId || p.status !== 'EXECUTED') continue;
-    for (const l of p.lines) purchasedUnits[l.requirementId] = (purchasedUnits[l.requirementId] ?? 0) + l.unitsCovered;
+    for (const l of p.lines)
+      purchasedUnits[l.requirementId] = (purchasedUnits[l.requirementId] ?? 0) + l.unitsCovered;
   }
   return { payments, proposals, committedCents, purchasedUnits };
 }
@@ -59,11 +68,21 @@ export async function loadPolicyContext(
     store.quotesByIds([...new Set(proposal.lines.map((l) => l.quoteId))]),
     missionCommitments(store, mission.id, proposal.id),
   ]);
-  const approval = extras.approvalId ? await store.getApproval(mission.id, extras.approvalId) : await store.activeApproval(proposal.id);
+  const approval = extras.approvalId
+    ? await store.getApproval(mission.id, extras.approvalId)
+    : await store.activeApproval(proposal.id);
   return {
     stage,
     now: extras.now,
-    mission: { id: mission.id, status: mission.status, version: mission.version, budgetCents: mission.budgetCents, currency: mission.currency, deadline: mission.deadline, timezone: mission.timezone },
+    mission: {
+      id: mission.id,
+      status: mission.status,
+      version: mission.version,
+      budgetCents: mission.budgetCents,
+      currency: mission.currency,
+      deadline: mission.deadline,
+      timezone: mission.timezone,
+    },
     requirements,
     proposal,
     candidates: new Map(candidates.map((c) => [c.id, c])),
@@ -103,7 +122,10 @@ export async function evaluateAndRecord(store: Store, ctx: PolicyContext): Promi
   return decision;
 }
 
-export async function inTx<T>(deps: Deps, fn: (store: Store, q: Queryable) => Promise<T>): Promise<T> {
+export async function inTx<T>(
+  deps: Deps,
+  fn: (store: Store, q: Queryable) => Promise<T>,
+): Promise<T> {
   return deps.db.tx((q) => fn(new Store(q), q));
 }
 

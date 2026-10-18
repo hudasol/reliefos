@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildSchedule, classifyArrival } from '../../server/schedule/schedule.js';
-import { DEADLINE, MISSION_ID, makeScenario, planFor, proposalFromPlan, WINDOW_START } from '../helpers/factories.js';
+import {
+  DEADLINE,
+  MISSION_ID,
+  makeScenario,
+  planFor,
+  proposalFromPlan,
+  WINDOW_START,
+} from '../helpers/factories.js';
 
 describe('delivery schedule', () => {
   it('creates one delivery per supplier, then intake depending on all deliveries', () => {
@@ -27,9 +34,22 @@ describe('delivery schedule', () => {
     const proposal = proposalFromPlan(planFor(s));
     const quotes = new Map(s.quotes.map((q) => [q.candidateId, q]));
     const l = proposal.lines[0]!;
-    quotes.set(l.candidateId, { ...quotes.get(l.candidateId)!, eta: new Date(DEADLINE.getTime() + 20 * 60_000).toISOString() });
-    const tasks = buildSchedule({ missionId: MISSION_ID, destination: 'East Shelter', windowStart: WINDOW_START, deadline: DEADLINE, proposal, currentQuotes: quotes, confirmed: false });
-    expect(tasks.find((t) => t.resource === `Supplier · ${l.merchantDomain}`)!.status).toBe('CONFLICT');
+    quotes.set(l.candidateId, {
+      ...quotes.get(l.candidateId)!,
+      eta: new Date(DEADLINE.getTime() + 20 * 60_000).toISOString(),
+    });
+    const tasks = buildSchedule({
+      missionId: MISSION_ID,
+      destination: 'East Shelter',
+      windowStart: WINDOW_START,
+      deadline: DEADLINE,
+      proposal,
+      currentQuotes: quotes,
+      confirmed: false,
+    });
+    expect(tasks.find((t) => t.resource === `Supplier · ${l.merchantDomain}`)!.status).toBe(
+      'CONFLICT',
+    );
     expect(tasks.find((t) => t.kind === 'intake')!.status).toBe('CONFLICT');
   });
 

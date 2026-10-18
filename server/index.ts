@@ -5,7 +5,17 @@ const config = loadConfig();
 const { app, db, log } = await buildServer(config);
 
 const server = app.listen(config.port, () => {
-  log.info({ port: config.port, env: config.env, database: db.kind, paypal: !!config.paypal, channel3: !!config.channel3ApiKey, claude: !!config.anthropic }, 'RELIEFOS listening');
+  log.info(
+    {
+      port: config.port,
+      env: config.env,
+      database: db.kind,
+      paypal: !!config.paypal,
+      channel3: !!config.channel3ApiKey,
+      claude: !!config.anthropic,
+    },
+    'RELIEFOS listening',
+  );
 });
 
 async function shutdown(signal: string) {

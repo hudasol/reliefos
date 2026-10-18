@@ -3,14 +3,22 @@ import type { AgPageState, AgReportState, AgWidgetLayoutState } from 'ag-studio'
 // The built-in RELIEFOS mission dashboard: three pages (Mission, Sourcing, Assurance). Field ids
 // ('lines.lineTotal') refer to the data sources in ./data.ts.
 
-const at = (xTrack: number, yTrack: number, xSpan: number, ySpan: number): AgWidgetLayoutState => ({ xTrack, yTrack, xSpan, ySpan });
+const at = (xTrack: number, yTrack: number, xSpan: number, ySpan: number): AgWidgetLayoutState => ({
+  xTrack,
+  yTrack,
+  xSpan,
+  ySpan,
+});
 const title = (text: string) => ({ title: { enabled: true, text } });
 const sum = (id: string) => ({ id, aggregation: 'sum' as const });
 const countd = (id: string) => ({ id, aggregation: 'countd' as const });
 const kpi = (text: string, value: { id: string; aggregation?: 'sum' | 'countd' | 'avg' }) => ({
   type: 'value' as const,
   dataMapping: { value: [value] },
-  format: { title: { enabled: true, text }, style: { typography: { fontSize: 24, fontWeight: 'bold' as const } } },
+  format: {
+    title: { enabled: true, text },
+    style: { typography: { fontSize: 24, fontWeight: 'bold' as const } },
+  },
 });
 
 const activeOnly = { field: { id: 'lines.isActive' }, model: { operator: 'isTrue' as const } };
@@ -24,19 +32,40 @@ export const PAGES = [
 const mission: AgPageState = {
   id: 'mission',
   widgets: {
-    authority: { type: 'relief-authority', dataMapping: { value: [sum('lines.lineTotal')] }, format: title('Budget authority (current plan goods)') } as never,
-    gate: { type: 'relief-gate', dataMapping: {}, format: title('DEADMAN verdict on current proposal') } as never,
+    authority: {
+      type: 'relief-authority',
+      dataMapping: { value: [sum('lines.lineTotal')] },
+      format: title('Budget authority (current plan goods)'),
+    } as never,
+    gate: {
+      type: 'relief-gate',
+      dataMapping: {},
+      format: title('DEADMAN verdict on current proposal'),
+    } as never,
     'kpi-lines': kpi('Lines in current plan', countd('lines.id')),
     'kpi-units': kpi('Units covered', sum('lines.units')),
     'spend-by-category': {
       type: 'column-chart-grouped',
-      dataMapping: { categoryKey: [{ id: 'requirements.category' }], valueKey: [sum('lines.lineTotal')] },
+      dataMapping: {
+        categoryKey: [{ id: 'requirements.category' }],
+        valueKey: [sum('lines.lineTotal')],
+      },
       format: title('Planned goods spend by category'),
     },
     coverage: {
       type: 'bar-chart-grouped',
-      dataMapping: { categoryKey: [{ id: 'requirements.requirement' }], valueKey: [sum('requirements.needed'), sum('requirements.planned'), sum('requirements.purchased')] },
-      format: { ...title('Need vs planned vs purchased'), style: { theme: { common: { legend: { enabled: true } } } } },
+      dataMapping: {
+        categoryKey: [{ id: 'requirements.requirement' }],
+        valueKey: [
+          sum('requirements.needed'),
+          sum('requirements.planned'),
+          sum('requirements.purchased'),
+        ],
+      },
+      format: {
+        ...title('Need vs planned vs purchased'),
+        style: { theme: { common: { legend: { enabled: true } } } },
+      },
     },
     lines: {
       type: 'grid',
@@ -75,12 +104,22 @@ const sourcing: AgPageState = {
     'kpi-candidates': kpi('Listings evaluated', countd('candidates.id')),
     eligibility: {
       type: 'column-chart-stacked',
-      dataMapping: { categoryKey: [{ id: 'requirements.category' }], valueKey: [countd('candidates.id')], legendKey: [{ id: 'candidates.eligible' }] },
-      format: { ...title('Eligible vs excluded listings by category'), style: { theme: { common: { legend: { enabled: true } } } } },
+      dataMapping: {
+        categoryKey: [{ id: 'requirements.category' }],
+        valueKey: [countd('candidates.id')],
+        legendKey: [{ id: 'candidates.eligible' }],
+      },
+      format: {
+        ...title('Eligible vs excluded listings by category'),
+        style: { theme: { common: { legend: { enabled: true } } } },
+      },
     },
     provenance: {
       type: 'donut-chart',
-      dataMapping: { categoryKey: [{ id: 'candidates.provenance' }], valueKey: [countd('candidates.id')] },
+      dataMapping: {
+        categoryKey: [{ id: 'candidates.provenance' }],
+        valueKey: [countd('candidates.id')],
+      },
       format: title('Listings by data source'),
     },
     exclusions: {
@@ -113,17 +152,40 @@ const assurance: AgPageState = {
   widgets: {
     'checks-by-rule': {
       type: 'bar-chart-stacked',
-      dataMapping: { categoryKey: [{ id: 'checks.check' }], valueKey: [countd('checks.id')], legendKey: [{ id: 'checks.passed' }] },
-      format: { ...title('Policy check outcomes across all evaluations'), style: { theme: { common: { legend: { enabled: true } } } } },
+      dataMapping: {
+        categoryKey: [{ id: 'checks.check' }],
+        valueKey: [countd('checks.id')],
+        legendKey: [{ id: 'checks.passed' }],
+      },
+      format: {
+        ...title('Policy check outcomes across all evaluations'),
+        style: { theme: { common: { legend: { enabled: true } } } },
+      },
     },
     security: {
       type: 'grid',
-      dataMapping: { cols: [{ id: 'security.scenario' }, { id: 'security.passed' }, { id: 'security.enforcedBy' }, { id: 'security.observed' }] },
+      dataMapping: {
+        cols: [
+          { id: 'security.scenario' },
+          { id: 'security.passed' },
+          { id: 'security.enforcedBy' },
+          { id: 'security.observed' },
+        ],
+      },
       format: title('Latest adversarial suite'),
     },
     payments: {
       type: 'grid',
-      dataMapping: { cols: [{ id: 'payments.proposalVersion' }, { id: 'payments.status' }, sum('payments.amount'), { id: 'payments.orderId' }, { id: 'payments.captureId' }, { id: 'payments.verified' }] },
+      dataMapping: {
+        cols: [
+          { id: 'payments.proposalVersion' },
+          { id: 'payments.status' },
+          sum('payments.amount'),
+          { id: 'payments.orderId' },
+          { id: 'payments.captureId' },
+          { id: 'payments.verified' },
+        ],
+      },
       format: title('PayPal payment operations'),
     },
   },
@@ -134,4 +196,7 @@ const assurance: AgPageState = {
   },
 } as unknown as AgPageState;
 
-export const missionReport: AgReportState = { selectedPageId: 'mission', pages: [mission, sourcing, assurance] } as unknown as AgReportState;
+export const missionReport: AgReportState = {
+  selectedPageId: 'mission',
+  pages: [mission, sourcing, assurance],
+} as unknown as AgReportState;

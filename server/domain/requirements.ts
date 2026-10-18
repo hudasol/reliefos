@@ -6,13 +6,29 @@ import type { Priority, RequirementCategory, RequirementSpec } from '../../share
 export const PLANNING_ASSUMPTIONS = {
   drinkingWaterLitersPerPersonPerDay: {
     value: 3,
-    source: 'Sphere Handbook survival drinking-water need of 2.5–3 L per person per day (upper bound used).',
+    source:
+      'Sphere Handbook survival drinking-water need of 2.5–3 L per person per day (upper bound used).',
   },
-  blanketsPerPerson: { value: 1, source: 'One blanket per sheltered person (planning assumption).' },
-  hygieneKitsPerHousehold: { value: 1, source: 'One hygiene kit per household (planning assumption).' },
-  peoplePerPowerBank: { value: 10, source: 'One shared power bank per 10 people (planning assumption).' },
-  diapersPerInfantPerDay: { value: 8, source: 'About 8 diapers per infant per day (planning assumption).' },
-  minPowerBankCapacityMah: { value: 10_000, source: 'Minimum 10,000 mAh to charge a phone ~2 times.' },
+  blanketsPerPerson: {
+    value: 1,
+    source: 'One blanket per sheltered person (planning assumption).',
+  },
+  hygieneKitsPerHousehold: {
+    value: 1,
+    source: 'One hygiene kit per household (planning assumption).',
+  },
+  peoplePerPowerBank: {
+    value: 10,
+    source: 'One shared power bank per 10 people (planning assumption).',
+  },
+  diapersPerInfantPerDay: {
+    value: 8,
+    source: 'About 8 diapers per infant per day (planning assumption).',
+  },
+  minPowerBankCapacityMah: {
+    value: 10_000,
+    source: 'Minimum 10,000 mAh to charge a phone ~2 times.',
+  },
 } as const;
 
 export interface MissionParameters {
@@ -34,7 +50,14 @@ export interface DerivedRequirement {
   basis: Record<string, number | string>;
 }
 
-const COMMON_PROHIBITED = ['\\bused\\b', 'refurbished', 'open[- ]box', '\\bsample\\b', '\\btoy\\b', 'costume'];
+const COMMON_PROHIBITED = [
+  '\\bused\\b',
+  'refurbished',
+  'open[- ]box',
+  '\\bsample\\b',
+  '\\btoy\\b',
+  'costume',
+];
 
 export function deriveRequirements(p: MissionParameters): DerivedRequirement[] {
   const a = PLANNING_ASSUMPTIONS;
@@ -120,8 +143,20 @@ export function deriveRequirements(p: MissionParameters): DerivedRequirement[] {
     unit: 'kits',
     priority: 'high',
     spec: {
-      mustMatchAny: ['hygiene kits?', 'toiletr(?:y|ies) kits?', 'personal care kits?', 'hygiene (?:packs?|bags?)'],
-      mustNotMatch: [...COMMON_PROHIBITED, 'empty', 'organi[sz]er', 'toiletry bag(?! with)', '\\bdopp\\b', 'travel bottles'],
+      mustMatchAny: [
+        'hygiene kits?',
+        'toiletr(?:y|ies) kits?',
+        'personal care kits?',
+        'hygiene (?:packs?|bags?)',
+      ],
+      mustNotMatch: [
+        ...COMMON_PROHIBITED,
+        'empty',
+        'organi[sz]er',
+        'toiletry bag(?! with)',
+        '\\bdopp\\b',
+        'travel bottles',
+      ],
       numeric: [],
     },
     searchQuery: 'hygiene kits bulk individually packed',
@@ -138,7 +173,14 @@ export function deriveRequirements(p: MissionParameters): DerivedRequirement[] {
     priority: 'standard',
     spec: {
       mustMatchAny: ['power ?banks?', 'portable (?:phone )?chargers?', 'battery packs?'],
-      mustNotMatch: [...COMMON_PROHIBITED, '\\bcase\\b', 'holder', 'cable only', 'replacement battery', 'jump starter'],
+      mustNotMatch: [
+        ...COMMON_PROHIBITED,
+        '\\bcase\\b',
+        'holder',
+        'cable only',
+        'replacement battery',
+        'jump starter',
+      ],
       numeric: [{ attribute: 'capacity_mAh', min: a.minPowerBankCapacityMah.value }],
     },
     searchQuery: 'portable power bank 10000mAh phone charger',

@@ -35,14 +35,20 @@ function Sidebar() {
   return (
     <aside className="sidebar" aria-label="Primary">
       <div className="brand">
-        <div className="brand-mark" aria-hidden="true">R</div>
+        <div className="brand-mark" aria-hidden="true">
+          R
+        </div>
         <div>
           <div className="brand-name">RELIEFOS</div>
           <div className="brand-sub">Emergency procurement</div>
         </div>
       </div>
       <nav className="nav-section" aria-label="Workspace">
-        <NavLink to="/missions" end className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+        <NavLink
+          to="/missions"
+          end
+          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+        >
           <IconList /> Missions
         </NavLink>
       </nav>
@@ -54,7 +60,12 @@ function Sidebar() {
           </div>
           <nav className="nav-section" aria-label="Mission">
             {MISSION_NAV.map((n) => (
-              <NavLink key={n.to} to={`/missions/${missionId}${n.to ? `/${n.to}` : ''}`} end={n.end} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+              <NavLink
+                key={n.to}
+                to={`/missions/${missionId}${n.to ? `/${n.to}` : ''}`}
+                end={n.end}
+                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              >
                 <n.icon /> {n.label}
               </NavLink>
             ))}
@@ -62,7 +73,10 @@ function Sidebar() {
         </>
       )}
       <nav className="nav-section" aria-label="System">
-        <NavLink to="/integrations" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+        <NavLink
+          to="/integrations"
+          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+        >
           <IconPlug /> Integrations
         </NavLink>
       </nav>
@@ -107,16 +121,35 @@ export function MissionLayout() {
   const { missionId } = useParams();
   const navigate = useNavigate();
   const q = useMission(missionId!);
-  if (q.isLoading) return <div className="content"><LoadingBlock rows={8} /></div>;
-  if (q.error || !q.data) return <div className="content"><ErrorBlock error={q.error} retry={() => void q.refetch()} /></div>;
+  if (q.isLoading)
+    return (
+      <div className="content">
+        <LoadingBlock rows={8} />
+      </div>
+    );
+  if (q.error || !q.data)
+    return (
+      <div className="content">
+        <ErrorBlock error={q.error} retry={() => void q.refetch()} />
+      </div>
+    );
   const { mission, summary } = q.data;
-  const target: Record<string, string> = { PLAN: 'procurement', RECOVER: 'procurement', APPROVE: 'procurement', PAY: 'payments', RECONCILE: 'payments', EDIT: 'edit', DONE: 'report' };
+  const target: Record<string, string> = {
+    PLAN: 'procurement',
+    RECOVER: 'procurement',
+    APPROVE: 'procurement',
+    PAY: 'payments',
+    RECONCILE: 'payments',
+    EDIT: 'edit',
+    DONE: 'report',
+  };
   return (
     <>
       <header className="topbar">
         <div>
           <div className="crumbs">
-            {mission.organization} · v{mission.version} · deadline {clock(mission.deadline, mission.timezone)} at {mission.destination}
+            {mission.organization} · v{mission.version} · deadline{' '}
+            {clock(mission.deadline, mission.timezone)} at {mission.destination}
           </div>
           <div className="row" style={{ marginTop: 2 }}>
             <span className="title">{mission.title}</span>
@@ -129,7 +162,10 @@ export function MissionLayout() {
           {summary.nextAction.label}
         </div>
         {target[summary.nextAction.code] && (
-          <Button variant="primary" onClick={() => navigate(`/missions/${mission.id}/${target[summary.nextAction.code]}`)}>
+          <Button
+            variant="primary"
+            onClick={() => navigate(`/missions/${mission.id}/${target[summary.nextAction.code]}`)}
+          >
             Go
           </Button>
         )}

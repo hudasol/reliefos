@@ -1,6 +1,15 @@
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAudit, useMission, usePlan } from '../api/hooks';
-import { Badge, Button, Callout, errorText, Panel, QueryView, StatusBadge, useToast } from '../components/ui';
+import {
+  Badge,
+  Button,
+  Callout,
+  errorText,
+  Panel,
+  QueryView,
+  StatusBadge,
+  useToast,
+} from '../components/ui';
 import { clock, dateTime, num, PROPOSAL_TONE, usd } from '../lib/format';
 import type { MissionDetail } from '../../../shared/types';
 
@@ -11,14 +20,35 @@ function BudgetMeter({ d }: { d: MissionDetail }) {
   return (
     <div>
       <div className="meter" aria-label="Budget allocation" style={{ height: 10 }}>
-        <span style={{ width: pct(s.committedCents), background: 'var(--ok)' }} title={`Committed ${usd(s.committedCents)}`} />
-        <span style={{ width: pct(s.pendingCents), background: 'var(--warn)' }} title={`Pending ${usd(s.pendingCents)}`} />
-        <span style={{ width: pct(planned), background: 'var(--accent)', opacity: 0.55 }} title={`Planned ${usd(planned)}`} />
+        <span
+          style={{ width: pct(s.committedCents), background: 'var(--ok)' }}
+          title={`Committed ${usd(s.committedCents)}`}
+        />
+        <span
+          style={{ width: pct(s.pendingCents), background: 'var(--warn)' }}
+          title={`Pending ${usd(s.pendingCents)}`}
+        />
+        <span
+          style={{ width: pct(planned), background: 'var(--accent)', opacity: 0.55 }}
+          title={`Planned ${usd(planned)}`}
+        />
       </div>
       <div className="row small text-2" style={{ marginTop: 6, gap: 16 }}>
-        <span><span className="dot" style={{ display: 'inline-block', background: 'var(--ok)' }} /> Paid (verified) {usd(s.committedCents)}</span>
-        <span><span className="dot" style={{ display: 'inline-block', background: 'var(--warn)' }} /> In flight {usd(s.pendingCents)}</span>
-        <span><span className="dot" style={{ display: 'inline-block', background: 'var(--accent)', opacity: 0.55 }} /> Planned, unpaid {usd(planned)}</span>
+        <span>
+          <span className="dot" style={{ display: 'inline-block', background: 'var(--ok)' }} /> Paid
+          (verified) {usd(s.committedCents)}
+        </span>
+        <span>
+          <span className="dot" style={{ display: 'inline-block', background: 'var(--warn)' }} /> In
+          flight {usd(s.pendingCents)}
+        </span>
+        <span>
+          <span
+            className="dot"
+            style={{ display: 'inline-block', background: 'var(--accent)', opacity: 0.55 }}
+          />{' '}
+          Planned, unpaid {usd(planned)}
+        </span>
         <span style={{ marginLeft: 'auto' }}>Authority {usd(s.budgetCents)}</span>
       </div>
     </div>
@@ -40,17 +70,29 @@ export function OverviewPage() {
           const { mission, summary, requirements, activeProposal: ap } = d;
           const plannedByReq = new Map<string, number>();
           if (ap && !['REJECTED', 'INVALIDATED', 'FAILED', 'EXECUTED'].includes(ap.status)) {
-            for (const l of ap.lines) plannedByReq.set(l.requirementId, (plannedByReq.get(l.requirementId) ?? 0) + l.unitsCovered);
+            for (const l of ap.lines)
+              plannedByReq.set(
+                l.requirementId,
+                (plannedByReq.get(l.requirementId) ?? 0) + l.unitsCovered,
+              );
           }
           const purchasedByReq = new Map<string, number>();
-          for (const p of d.proposals.filter((x) => x.status === 'EXECUTED')) for (const l of p.lines) purchasedByReq.set(l.requirementId, (purchasedByReq.get(l.requirementId) ?? 0) + l.unitsCovered);
+          for (const p of d.proposals.filter((x) => x.status === 'EXECUTED'))
+            for (const l of p.lines)
+              purchasedByReq.set(
+                l.requirementId,
+                (purchasedByReq.get(l.requirementId) ?? 0) + l.unitsCovered,
+              );
           const decision = ap?.latestDecision;
           return (
             <>
               {mission.status === 'DRAFT' && (
                 <Callout tone="info" title="This mission has not been planned yet">
                   <div className="row" style={{ marginTop: 6 }}>
-                    <span className="small">RELIEFOS will derive requirements, search products, rank them with the buyer agent and submit a proposal to the policy gate.</span>
+                    <span className="small">
+                      RELIEFOS will derive requirements, search products, rank them with the buyer
+                      agent and submit a proposal to the policy gate.
+                    </span>
                     <Button
                       variant="primary"
                       loading={plan.isPending}
@@ -59,7 +101,10 @@ export function OverviewPage() {
                           {},
                           {
                             onSuccess: (r) => {
-                              toast(r.decision.outcome === 'ALLOW' ? 'ok' : 'danger', `Proposal v${r.proposal.version}: ${r.decision.outcome === 'ALLOW' ? 'validated, awaiting approval' : 'rejected by policy'}`);
+                              toast(
+                                r.decision.outcome === 'ALLOW' ? 'ok' : 'danger',
+                                `Proposal v${r.proposal.version}: ${r.decision.outcome === 'ALLOW' ? 'validated, awaiting approval' : 'rejected by policy'}`,
+                              );
                               navigate(`/missions/${mission.id}/procurement`);
                             },
                             onError: (e) => toast('danger', errorText(e)),
@@ -74,7 +119,8 @@ export function OverviewPage() {
               )}
               {summary.unresolvedPayments > 0 && (
                 <Callout tone="warn" title="A payment outcome is unresolved">
-                  RELIEFOS will not start another purchase until it is reconciled with PayPal. <Link to={`/missions/${mission.id}/payments`}>Reconcile now</Link>
+                  RELIEFOS will not start another purchase until it is reconciled with PayPal.{' '}
+                  <Link to={`/missions/${mission.id}/payments`}>Reconcile now</Link>
                 </Callout>
               )}
 
@@ -88,12 +134,20 @@ export function OverviewPage() {
                   <div className="kpi">
                     <div className="label">Planned</div>
                     <div className="value">{usd(summary.plannedCents)}</div>
-                    <div className="hint">{ap ? `Proposal v${ap.version} · ${ap.status.replace(/_/g, ' ').toLowerCase()}` : 'No proposal yet'}</div>
+                    <div className="hint">
+                      {ap
+                        ? `Proposal v${ap.version} · ${ap.status.replace(/_/g, ' ').toLowerCase()}`
+                        : 'No proposal yet'}
+                    </div>
                   </div>
                   <div className="kpi">
                     <div className="label">Paid (verified)</div>
                     <div className="value">{usd(summary.committedCents)}</div>
-                    <div className="hint">{summary.pendingCents ? `${usd(summary.pendingCents)} in flight` : 'PayPal-verified captures only'}</div>
+                    <div className="hint">
+                      {summary.pendingCents
+                        ? `${usd(summary.pendingCents)} in flight`
+                        : 'PayPal-verified captures only'}
+                    </div>
                   </div>
                   <div className="kpi">
                     <div className="label">Remaining authority</div>
@@ -105,7 +159,13 @@ export function OverviewPage() {
                     <div className="value">
                       {summary.requirementsCovered}/{summary.requirementsTotal}
                     </div>
-                    <div className="hint">{summary.openGaps.length ? `${summary.openGaps.length} still open` : summary.requirementsTotal ? 'All covered' : 'Not derived yet'}</div>
+                    <div className="hint">
+                      {summary.openGaps.length
+                        ? `${summary.openGaps.length} still open`
+                        : summary.requirementsTotal
+                          ? 'All covered'
+                          : 'Not derived yet'}
+                    </div>
                   </div>
                 </div>
                 <div className="panel-body">
@@ -114,9 +174,15 @@ export function OverviewPage() {
               </section>
 
               <div className="grid side">
-                <Panel title="What the mission needs" sub={`${mission.population} people · ${mission.infants} infants · ${mission.coverageDays}-day coverage`} flush>
+                <Panel
+                  title="What the mission needs"
+                  sub={`${mission.population} people · ${mission.infants} infants · ${mission.coverageDays}-day coverage`}
+                  flush
+                >
                   {requirements.length === 0 ? (
-                    <div className="panel-body muted">Requirements are derived when the mission is planned.</div>
+                    <div className="panel-body muted">
+                      Requirements are derived when the mission is planned.
+                    </div>
                   ) : (
                     <table className="tbl">
                       <thead>
@@ -133,7 +199,14 @@ export function OverviewPage() {
                         {requirements.map((r) => {
                           const planned = plannedByReq.get(r.id) ?? 0;
                           const bought = purchasedByReq.get(r.id) ?? 0;
-                          const state = bought >= r.quantity ? ['ok', 'Purchased'] : planned + bought >= r.quantity ? ['accent', 'Planned'] : planned + bought > 0 ? ['warn', 'Partial'] : ['danger', 'Unmet'];
+                          const state =
+                            bought >= r.quantity
+                              ? ['ok', 'Purchased']
+                              : planned + bought >= r.quantity
+                                ? ['accent', 'Planned']
+                                : planned + bought > 0
+                                  ? ['warn', 'Partial']
+                                  : ['danger', 'Unmet'];
                           return (
                             <tr key={r.id}>
                               <td>
@@ -141,7 +214,16 @@ export function OverviewPage() {
                                 <div className="small muted">{r.rationale}</div>
                               </td>
                               <td>
-                                <Badge plain tone={r.priority === 'critical' ? 'danger' : r.priority === 'high' ? 'warn' : 'neutral'}>
+                                <Badge
+                                  plain
+                                  tone={
+                                    r.priority === 'critical'
+                                      ? 'danger'
+                                      : r.priority === 'high'
+                                        ? 'warn'
+                                        : 'neutral'
+                                  }
+                                >
                                   {r.priority}
                                 </Badge>
                               </td>
@@ -162,7 +244,10 @@ export function OverviewPage() {
                 </Panel>
 
                 <div className="stack" style={{ gap: 18 }}>
-                  <Panel title="Current proposal" actions={ap && <Link to={`/missions/${mission.id}/procurement`}>Open</Link>}>
+                  <Panel
+                    title="Current proposal"
+                    actions={ap && <Link to={`/missions/${mission.id}/procurement`}>Open</Link>}
+                  >
                     {!ap ? (
                       <span className="muted">No proposal yet.</span>
                     ) : (
@@ -175,20 +260,31 @@ export function OverviewPage() {
                           </span>
                         </div>
                         <div className="small text-2">
-                          {ap.lines.length} lines · {usd(ap.shippingCents)} shipping · by {ap.createdBy}
+                          {ap.lines.length} lines · {usd(ap.shippingCents)} shipping · by{' '}
+                          {ap.createdBy}
                         </div>
                         {decision && (
-                          <Callout tone={decision.outcome === 'ALLOW' ? 'ok' : 'danger'} title={`DEADMAN ${decision.outcome === 'ALLOW' ? 'allowed' : 'denied'} at ${decision.stage}`}>
+                          <Callout
+                            tone={decision.outcome === 'ALLOW' ? 'ok' : 'danger'}
+                            title={`DEADMAN ${decision.outcome === 'ALLOW' ? 'allowed' : 'denied'} at ${decision.stage}`}
+                          >
                             <div className="small">
                               {decision.outcome === 'ALLOW'
                                 ? `${decision.checks.length} checks passed${decision.warnings.length ? `, ${decision.warnings.length} warnings` : ''}.`
-                                : decision.violations.slice(0, 3).map((v) => <div key={v.checkId + v.message}>• {v.message}</div>)}
+                                : decision.violations
+                                    .slice(0, 3)
+                                    .map((v) => (
+                                      <div key={v.checkId + v.message}>• {v.message}</div>
+                                    ))}
                             </div>
                           </Callout>
                         )}
                         {ap.gaps.length > 0 && (
                           <div className="small">
-                            <span className="strong">Unmet in this plan:</span> {ap.gaps.map((g) => `${g.label} (−${num(g.shortfallUnits)})`).join('; ')}
+                            <span className="strong">Unmet in this plan:</span>{' '}
+                            {ap.gaps
+                              .map((g) => `${g.label} (−${num(g.shortfallUnits)})`)
+                              .join('; ')}
                           </div>
                         )}
                       </div>
@@ -203,15 +299,28 @@ export function OverviewPage() {
                       <dt>Destination</dt>
                       <dd>{mission.destination}</dd>
                       <dt>Catalog</dt>
-                      <dd>{mission.catalogSource === 'channel3' ? <span className="tag live">Channel3 live</span> : <span className="tag fixture">Fixture catalog</span>}</dd>
+                      <dd>
+                        {mission.catalogSource === 'channel3' ? (
+                          <span className="tag live">Channel3 live</span>
+                        ) : (
+                          <span className="tag fixture">Fixture catalog</span>
+                        )}
+                      </dd>
                       <dt>Planner</dt>
-                      <dd>{mission.plannerMode === 'claude' ? 'Claude (deterministic fallback)' : 'Deterministic'}</dd>
+                      <dd>
+                        {mission.plannerMode === 'claude'
+                          ? 'Claude (deterministic fallback)'
+                          : 'Deterministic'}
+                      </dd>
                     </dl>
                   </Panel>
                 </div>
               </div>
 
-              <Panel title="Recent activity" actions={<Link to={`/missions/${mission.id}/audit`}>Full audit trail</Link>}>
+              <Panel
+                title="Recent activity"
+                actions={<Link to={`/missions/${mission.id}/audit`}>Full audit trail</Link>}
+              >
                 <QueryView q={audit} rows={4}>
                   {(a) =>
                     a.events.length === 0 ? (
@@ -219,7 +328,10 @@ export function OverviewPage() {
                     ) : (
                       <div className="timeline">
                         {a.events.slice(0, 8).map((e) => (
-                          <div key={e.id} className={`tl-item ${/rejected|blocked|failed|unknown|discrepancy/.test(e.type) ? 'danger' : /completed|granted|allowed/.test(e.type) ? 'ok' : /drill|fallback/.test(e.type) ? 'warn' : 'accent'}`}>
+                          <div
+                            key={e.id}
+                            className={`tl-item ${/rejected|blocked|failed|unknown|discrepancy/.test(e.type) ? 'danger' : /completed|granted|allowed/.test(e.type) ? 'ok' : /drill|fallback/.test(e.type) ? 'warn' : 'accent'}`}
+                          >
                             <div className="row small">
                               <span className="mono muted">{e.type}</span>
                               <span className="muted" style={{ marginLeft: 'auto' }}>

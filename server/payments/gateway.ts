@@ -45,7 +45,14 @@ export interface GatewayOrder {
 
 export type GatewayResult<T> =
   | { kind: 'ok'; value: T; debugId: string | null }
-  | { kind: 'rejected'; status: number; name: string; message: string; issues: string[]; debugId: string | null }
+  | {
+      kind: 'rejected';
+      status: number;
+      name: string;
+      message: string;
+      issues: string[];
+      debugId: string | null;
+    }
   | { kind: 'ambiguous'; reason: string };
 
 export interface PaymentGateway {

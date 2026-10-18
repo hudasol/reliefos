@@ -19,15 +19,23 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
     credentials: 'same-origin',
     headers: {
       Accept: 'application/json',
-      ...(method !== 'GET' ? { 'Content-Type': 'application/json', 'x-reliefos-request': '1' } : {}),
+      ...(method !== 'GET'
+        ? { 'Content-Type': 'application/json', 'x-reliefos-request': '1' }
+        : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
   const data = text ? (JSON.parse(text) as unknown) : null;
   if (!res.ok) {
-    const err = (data as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
-    throw new ApiError(res.status, err?.code ?? `HTTP_${res.status}`, err?.message ?? res.statusText, err?.details);
+    const err = (data as { error?: { code?: string; message?: string; details?: unknown } } | null)
+      ?.error;
+    throw new ApiError(
+      res.status,
+      err?.code ?? `HTTP_${res.status}`,
+      err?.message ?? res.statusText,
+      err?.details,
+    );
   }
   return data as T;
 }

@@ -1,7 +1,12 @@
 import { useConfig } from '../api/hooks';
 import { Badge, Panel, QueryView } from '../components/ui';
 
-const TONE = { live: 'ok', fallback: 'warn', 'not-configured': 'neutral', error: 'danger' } as const;
+const TONE = {
+  live: 'ok',
+  fallback: 'warn',
+  'not-configured': 'neutral',
+  error: 'danger',
+} as const;
 
 export function IntegrationsPage() {
   const q = useConfig();
@@ -10,7 +15,10 @@ export function IntegrationsPage() {
       <div className="page-head">
         <div>
           <h1>Integrations</h1>
-          <p className="lede">Live state of every external dependency on this deployment. A fallback is always labelled in the UI; nothing that is not configured is ever presented as live.</p>
+          <p className="lede">
+            Live state of every external dependency on this deployment. A fallback is always
+            labelled in the UI; nothing that is not configured is ever presented as live.
+          </p>
         </div>
       </div>
       <Panel title="Status" flush>

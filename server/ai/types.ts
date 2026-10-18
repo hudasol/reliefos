@@ -14,7 +14,10 @@ export const InterpretationSchema = z.object({
   coverageDays: z.number().int().positive().nullable(),
   budgetUsd: z.number().positive().nullable(),
   /** Local wall-clock deadline, 24h "HH:MM". */
-  deadlineLocalTime: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+  deadlineLocalTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .nullable(),
   planningHorizonHours: z.number().positive().nullable(),
   destination: z.string().nullable(),
   categories: z.array(z.enum(['water', 'blankets', 'hygiene', 'power', 'baby'])),
@@ -58,7 +61,14 @@ export interface SelectionOption {
 }
 
 export interface SelectionInput {
-  requirements: { id: string; label: string; category: RequirementCategory; quantity: number; unit: string; priority: string }[];
+  requirements: {
+    id: string;
+    label: string;
+    category: RequirementCategory;
+    quantity: number;
+    unit: string;
+    priority: string;
+  }[];
   options: Record<string, SelectionOption[]>;
 }
 

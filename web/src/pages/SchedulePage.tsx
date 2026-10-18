@@ -17,7 +17,13 @@ const COLOR: Record<DeliveryTask['status'], string> = {
   CONFIRMED: 'green',
   SUPERSEDED: 'gray',
 };
-const TONE: Record<DeliveryTask['status'], 'info' | 'warn' | 'danger' | 'ok' | 'neutral'> = { PLANNED: 'info', AT_RISK: 'warn', CONFLICT: 'danger', CONFIRMED: 'ok', SUPERSEDED: 'neutral' };
+const TONE: Record<DeliveryTask['status'], 'info' | 'warn' | 'danger' | 'ok' | 'neutral'> = {
+  PLANNED: 'info',
+  AT_RISK: 'warn',
+  CONFLICT: 'danger',
+  CONFIRMED: 'ok',
+  SUPERSEDED: 'neutral',
+};
 const INTAKE_BUFFER_MIN = 30;
 
 export default function SchedulePage() {
@@ -29,30 +35,66 @@ export default function SchedulePage() {
   const model = useMemo(() => {
     if (!sq.data || !mq.data) return null;
     const activeId = mq.data.activeProposal?.id;
-    const tasks = sq.data.tasks.filter((t) => (showSuperseded ? true : t.proposalId === activeId || t.status === 'CONFIRMED'));
-    const resourceNames = [...new Set(tasks.map((t) => t.resource))].sort((a, b) => Number(a.startsWith('Supplier')) - Number(b.startsWith('Supplier')) || a.localeCompare(b)).reverse();
-    const resources = resourceNames.map((name) => ({ id: name, name, kind: name.startsWith('Supplier') ? 'Supplier shipment' : 'Shelter operations' }));
+    const tasks = sq.data.tasks.filter((t) =>
+      showSuperseded ? true : t.proposalId === activeId || t.status === 'CONFIRMED',
+    );
+    const resourceNames = [...new Set(tasks.map((t) => t.resource))]
+      .sort(
+        (a, b) =>
+          Number(a.startsWith('Supplier')) - Number(b.startsWith('Supplier')) || a.localeCompare(b),
+      )
+      .reverse();
+    const resources = resourceNames.map((name) => ({
+      id: name,
+      name,
+      kind: name.startsWith('Supplier') ? 'Supplier shipment' : 'Shelter operations',
+    }));
     const versions = new Map((mq.data.proposals ?? []).map((p) => [p.id, p.version]));
     const events = tasks.map((t) => ({
       id: t.id,
       resourceId: t.resource,
       name: `${t.proposalId !== activeId ? `v${versions.get(t.proposalId) ?? '?'} · ` : ''}${t.kind === 'delivery' ? 'Delivery' : t.kind === 'intake' ? 'Intake' : 'Distribution'} · ${t.label}`,
       startDate: new Date(t.startAt),
-      endDate: new Date(Math.max(new Date(t.endAt).getTime(), new Date(t.startAt).getTime() + 5 * 60_000)),
+      endDate: new Date(
+        Math.max(new Date(t.endAt).getTime(), new Date(t.startAt).getTime() + 5 * 60_000),
+      ),
       eventColor: t.proposalId !== activeId && t.status !== 'CONFIRMED' ? 'gray' : COLOR[t.status],
       cls: t.status === 'CONFLICT' ? 'rlf-conflict' : '',
       status: t.status,
       note: t.note ?? '',
     }));
     const ids = new Set(events.map((e) => e.id));
-    const dependencies = tasks.flatMap((t) => t.dependsOn.filter((d) => ids.has(d)).map((from) => ({ id: `${from}->${t.id}`, from, to: t.id })));
+    const dependencies = tasks.flatMap((t) =>
+      t.dependsOn
+        .filter((d) => ids.has(d))
+        .map((from) => ({ id: `${from}->${t.id}`, from, to: t.id })),
+    );
     const deadline = new Date(sq.data.deadline);
     const start = new Date(sq.data.windowStart);
-    const latestEnd = Math.max(deadline.getTime(), ...tasks.map((t) => new Date(t.endAt).getTime()));
+    const latestEnd = Math.max(
+      deadline.getTime(),
+      ...tasks.map((t) => new Date(t.endAt).getTime()),
+    );
     const timeRanges = [
-      { id: 'window', name: 'Mission window', startDate: start, endDate: deadline, cls: 'rlf-window' },
-      { id: 'cutoff', name: 'Intake cutoff', startDate: new Date(deadline.getTime() - INTAKE_BUFFER_MIN * 60_000), cls: 'rlf-cutoff' },
-      { id: 'deadline', name: `Deadline ${clock(sq.data.deadline, sq.data.timezone)}`, startDate: deadline, cls: 'rlf-deadline' },
+      {
+        id: 'window',
+        name: 'Mission window',
+        startDate: start,
+        endDate: deadline,
+        cls: 'rlf-window',
+      },
+      {
+        id: 'cutoff',
+        name: 'Intake cutoff',
+        startDate: new Date(deadline.getTime() - INTAKE_BUFFER_MIN * 60_000),
+        cls: 'rlf-cutoff',
+      },
+      {
+        id: 'deadline',
+        name: `Deadline ${clock(sq.data.deadline, sq.data.timezone)}`,
+        startDate: deadline,
+        cls: 'rlf-deadline',
+      },
     ];
     return {
       resources,
@@ -77,11 +119,20 @@ export default function SchedulePage() {
       <div className="page-head">
         <div>
           <h1>Delivery schedule</h1>
-          <p className="lede">Derived from the current proposal and each supplier's commitment. When an estimate changes, the schedule is recomputed and late deliveries surface as conflicts against the intake cutoff.</p>
+          <p className="lede">
+            Derived from the current proposal and each supplier's commitment. When an estimate
+            changes, the schedule is recomputed and late deliveries surface as conflicts against the
+            intake cutoff.
+          </p>
         </div>
         <span style={{ flex: 1 }} />
         <label className="row small text-2">
-          <input type="checkbox" checked={showSuperseded} onChange={(e) => setShowSuperseded(e.target.checked)} /> Show superseded plans
+          <input
+            type="checkbox"
+            checked={showSuperseded}
+            onChange={(e) => setShowSuperseded(e.target.checked)}
+          />{' '}
+          Show superseded plans
         </label>
       </div>
       <QueryView q={sq} rows={8}>
@@ -101,7 +152,12 @@ export default function SchedulePage() {
                   <Link to={`/missions/${missionId}/procurement`}>Review proposal</Link>
                 </Callout>
               )}
-              <Panel title={`${s.destination} resupply`} sub={`Times in ${s.timezone}`} actions={<SimTag label="Simulated supplier ETAs" />} flush>
+              <Panel
+                title={`${s.destination} resupply`}
+                sub={`Times in ${s.timezone}`}
+                actions={<SimTag label="Simulated supplier ETAs" />}
+                flush
+              >
                 <div className="scheduler-frame">
                   <BryntumScheduler
                     readOnly
@@ -124,7 +180,14 @@ export default function SchedulePage() {
                     timeRangesFeature={{ showCurrentTimeLine: false, showHeaderElements: true }}
                     dependenciesFeature
                     eventTooltipFeature={{
-                      template: (data: { eventRecord: { name: string; getData: (f: string) => string; startDate: Date; endDate: Date } }) =>
+                      template: (data: {
+                        eventRecord: {
+                          name: string;
+                          getData: (f: string) => string;
+                          startDate: Date;
+                          endDate: Date;
+                        };
+                      }) =>
                         `<div style="max-width:320px"><b>${escapeHtml(data.eventRecord.name)}</b><br/>${escapeHtml(data.eventRecord.getData('status'))}<br/>${escapeHtml(data.eventRecord.getData('note') || '')}</div>`,
                     }}
                     eventMenuFeature={false}
@@ -152,12 +215,18 @@ export default function SchedulePage() {
                         <td>{t.resource}</td>
                         <td>
                           {t.label}
-                          {t.note && <div className="small" style={{ color: 'var(--danger)' }}>{t.note}</div>}
+                          {t.note && (
+                            <div className="small" style={{ color: 'var(--danger)' }}>
+                              {t.note}
+                            </div>
+                          )}
                         </td>
                         <td>{clock(t.startAt, s.timezone)}</td>
                         <td>{clock(t.endAt, s.timezone)}</td>
                         <td>
-                          <Badge tone={TONE[t.status]}>{t.status.toLowerCase().replace('_', ' ')}</Badge>
+                          <Badge tone={TONE[t.status]}>
+                            {t.status.toLowerCase().replace('_', ' ')}
+                          </Badge>
                         </td>
                       </tr>
                     ))}
@@ -173,5 +242,8 @@ export default function SchedulePage() {
 }
 
 function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+  );
 }

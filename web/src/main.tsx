@@ -20,11 +20,24 @@ import { IntegrationsPage } from './pages/IntegrationsPage';
 // Heavy third-party UIs load on demand.
 const DecisionCenterPage = lazy(() => import('./pages/DecisionCenterPage'));
 const SchedulePage = lazy(() => import('./pages/SchedulePage'));
-const lazyPage = (el: React.ReactNode) => <Suspense fallback={<div className="content"><LoadingBlock rows={6} /></div>}>{el}</Suspense>;
+const lazyPage = (el: React.ReactNode) => (
+  <Suspense
+    fallback={
+      <div className="content">
+        <LoadingBlock rows={6} />
+      </div>
+    }
+  >
+    {el}
+  </Suspense>
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { refetchOnWindowFocus: false, retry: (count, err) => count < 2 && !(err as { status?: number }).status },
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: (count, err) => count < 2 && !(err as { status?: number }).status,
+    },
     mutations: { retry: false },
   },
 });

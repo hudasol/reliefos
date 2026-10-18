@@ -49,7 +49,13 @@ export const MISSION_TRANSITIONS: TransitionTable<MissionStatus> = {
   PLANNING: ['NEEDS_REVIEW', 'READY_FOR_APPROVAL', 'BLOCKED', 'PLANNING'],
   NEEDS_REVIEW: ['PLANNING', 'READY_FOR_APPROVAL', 'BLOCKED', 'NEEDS_REVIEW'],
   READY_FOR_APPROVAL: ['EXECUTING', 'NEEDS_REVIEW', 'PLANNING', 'READY_FOR_APPROVAL'],
-  EXECUTING: ['PARTIALLY_FULFILLED', 'COMPLETED', 'NEEDS_REVIEW', 'READY_FOR_APPROVAL', 'EXECUTING'],
+  EXECUTING: [
+    'PARTIALLY_FULFILLED',
+    'COMPLETED',
+    'NEEDS_REVIEW',
+    'READY_FOR_APPROVAL',
+    'EXECUTING',
+  ],
   PARTIALLY_FULFILLED: ['PLANNING', 'COMPLETED', 'NEEDS_REVIEW'],
   COMPLETED: [],
   BLOCKED: ['PLANNING', 'NEEDS_REVIEW'],
@@ -90,7 +96,11 @@ export const PAYMENT_TRANSITIONS: TransitionTable<PaymentStatus> = {
   CANCELLED: [],
 };
 
-export const TERMINAL_PAYMENT_STATUSES: readonly PaymentStatus[] = ['COMPLETED', 'FAILED', 'CANCELLED'];
+export const TERMINAL_PAYMENT_STATUSES: readonly PaymentStatus[] = [
+  'COMPLETED',
+  'FAILED',
+  'CANCELLED',
+];
 /** Payment states that still hold (or may hold) a claim on the budget and block a duplicate purchase. */
 export const BLOCKING_PAYMENT_STATUSES: readonly PaymentStatus[] = [
   'NOT_CREATED',
@@ -101,7 +111,10 @@ export const BLOCKING_PAYMENT_STATUSES: readonly PaymentStatus[] = [
   'UNKNOWN',
   'COMPLETED',
 ];
-export const UNRESOLVED_PAYMENT_STATUSES: readonly PaymentStatus[] = ['UNKNOWN', 'PROVIDER_PENDING'];
+export const UNRESOLVED_PAYMENT_STATUSES: readonly PaymentStatus[] = [
+  'UNKNOWN',
+  'PROVIDER_PENDING',
+];
 
 export class IllegalTransitionError extends Error {
   constructor(
@@ -114,7 +127,11 @@ export class IllegalTransitionError extends Error {
   }
 }
 
-export function canTransition<S extends string>(table: TransitionTable<S>, from: S, to: S): boolean {
+export function canTransition<S extends string>(
+  table: TransitionTable<S>,
+  from: S,
+  to: S,
+): boolean {
   return table[from].includes(to);
 }
 

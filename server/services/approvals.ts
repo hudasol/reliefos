@@ -9,7 +9,10 @@ export const APPROVAL_STATEMENT = (p: Proposal, budgetCents: number) =>
   `Any change to products, quantities, prices, shipping or mission terms voids this approval.`;
 
 export class PolicyDeniedError extends DomainError {
-  constructor(message: string, readonly decision: PolicyDecision) {
+  constructor(
+    message: string,
+    readonly decision: PolicyDecision,
+  ) {
     super('POLICY_DENIED', message, { decision });
   }
 }
@@ -26,12 +29,22 @@ export async function approveProposal(
   const outcome = await inTx(deps, async (s) => {
     const mission = await s.getMission(workspaceId, missionId, true);
     const proposal = await s.getProposal(missionId, proposalId, true);
-    if (proposal.status !== 'AWAITING_APPROVAL') throw illegalState(`Proposal v${proposal.version} is ${proposal.status}, not awaiting approval`);
-    if (proposal.contentHash !== input.expectedContentHash || proposal.totalCents !== input.expectedTotalCents) {
-      throw new DomainError('STALE_VERSION', 'The proposal changed since you reviewed it; reload before approving', {
-        reviewedHash: input.expectedContentHash,
-        currentHash: proposal.contentHash,
-      });
+    if (proposal.status !== 'AWAITING_APPROVAL')
+      throw illegalState(
+        `Proposal v${proposal.version} is ${proposal.status}, not awaiting approval`,
+      );
+    if (
+      proposal.contentHash !== input.expectedContentHash ||
+      proposal.totalCents !== input.expectedTotalCents
+    ) {
+      throw new DomainError(
+        'STALE_VERSION',
+        'The proposal changed since you reviewed it; reload before approving',
+        {
+          reviewedHash: input.expectedContentHash,
+          currentHash: proposal.contentHash,
+        },
+      );
     }
     const ctx = await loadPolicyContext(s, mission, proposal, 'approval', { now });
     const decision = await evaluateAndRecord(s, ctx);
@@ -72,20 +85,35 @@ export async function approveProposal(
       type: 'approval.granted',
       actor: `coordinator:${input.approverName}`,
       summary: `${input.approverName} approved v${proposal.version} for $${(proposal.totalCents / 100).toFixed(2)}`,
-      data: { approvalId: approval.id, contentHash: approval.contentHash, missionVersion: approval.missionVersion, amountCents: approval.amountCents },
+      data: {
+        approvalId: approval.id,
+        contentHash: approval.contentHash,
+        missionVersion: approval.missionVersion,
+        amountCents: approval.amountCents,
+      },
     });
     return { approval } as const;
   });
-  if (outcome.denied) throw new PolicyDeniedError('Approval blocked by the policy gate', outcome.denied);
+  if (outcome.denied)
+    throw new PolicyDeniedError('Approval blocked by the policy gate', outcome.denied);
   return outcome.approval!;
 }
 
-export async function rejectProposal(deps: Deps, workspaceId: string, missionId: string, proposalId: string, reason: string, actor: string) {
+export async function rejectProposal(
+  deps: Deps,
+  workspaceId: string,
+  missionId: string,
+  proposalId: string,
+  reason: string,
+  actor: string,
+) {
   await inTx(deps, async (s) => {
     const mission = await s.getMission(workspaceId, missionId, true);
     const proposal = await s.getProposal(missionId, proposalId, true);
     if (proposal.status !== 'AWAITING_APPROVAL' && proposal.status !== 'APPROVED') {
-      throw illegalState(`Proposal v${proposal.version} is ${proposal.status} and cannot be rejected`);
+      throw illegalState(
+        `Proposal v${proposal.version} is ${proposal.status} and cannot be rejected`,
+      );
     }
     if (proposal.status === 'APPROVED') {
       await s.invalidateApprovals({ missionId, proposalId }, `Withdrawn by ${actor}: ${reason}`);
@@ -94,6 +122,13 @@ export async function rejectProposal(deps: Deps, workspaceId: string, missionId:
       await s.setProposalStatus(proposal.id, 'AWAITING_APPROVAL', 'REJECTED');
     }
     await s.setMissionStatus(missionId, mission.status, 'NEEDS_REVIEW');
-    await s.audit({ workspaceId, missionId, type: 'proposal.rejected_by_coordinator', actor, summary: `v${proposal.version} rejected by coordinator: ${reason}`, data: { reason } });
+    await s.audit({
+      workspaceId,
+      missionId,
+      type: 'proposal.rejected_by_coordinator',
+      actor,
+      summary: `v${proposal.version} rejected by coordinator: ${reason}`,
+      data: { reason },
+    });
   });
 }

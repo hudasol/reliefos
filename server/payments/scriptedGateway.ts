@@ -54,7 +54,8 @@ export class ScriptedGateway implements PaymentGateway {
   async createOrder(input: CreateOrderInput): Promise<GatewayResult<GatewayOrder>> {
     this.calls.push({ op: 'create', requestId: input.requestId });
     const fault = this.takeFault('create');
-    if (fault?.kind === 'ambiguous-before-success') return { kind: 'ambiguous', reason: 'scripted timeout before PayPal received the request' };
+    if (fault?.kind === 'ambiguous-before-success')
+      return { kind: 'ambiguous', reason: 'scripted timeout before PayPal received the request' };
     const prior = this.requestIds.get(`create:${input.requestId}`);
     if (prior) return prior;
     const id = `SCRIPTED-${String(++this.seq).padStart(6, '0')}`;
@@ -71,42 +72,97 @@ export class ScriptedGateway implements PaymentGateway {
     this.orders.set(id, { order, input, approved: false });
     const result: GatewayResult<GatewayOrder> = { kind: 'ok', value: order, debugId: `dbg-${id}` };
     this.requestIds.set(`create:${input.requestId}`, result);
-    if (fault?.kind === 'ambiguous-after-success') return { kind: 'ambiguous', reason: 'scripted timeout after PayPal created the order' };
+    if (fault?.kind === 'ambiguous-after-success')
+      return { kind: 'ambiguous', reason: 'scripted timeout after PayPal created the order' };
     return result;
   }
 
   async getOrder(orderId: string): Promise<GatewayResult<GatewayOrder>> {
     this.calls.push({ op: 'get', orderId });
     const fault = this.takeFault('get');
-    if (fault) return { kind: 'rejected', status: 503, name: 'SERVICE_UNAVAILABLE', message: 'scripted outage', issues: [], debugId: null };
+    if (fault)
+      return {
+        kind: 'rejected',
+        status: 503,
+        name: 'SERVICE_UNAVAILABLE',
+        message: 'scripted outage',
+        issues: [],
+        debugId: null,
+      };
     const o = this.orders.get(orderId);
-    if (!o) return { kind: 'rejected', status: 404, name: 'RESOURCE_NOT_FOUND', message: 'order not found', issues: ['INVALID_RESOURCE_ID'], debugId: null };
+    if (!o)
+      return {
+        kind: 'rejected',
+        status: 404,
+        name: 'RESOURCE_NOT_FOUND',
+        message: 'order not found',
+        issues: ['INVALID_RESOURCE_ID'],
+        debugId: null,
+      };
     return { kind: 'ok', value: o.order, debugId: null };
   }
 
   async captureOrder(orderId: string, requestId: string): Promise<GatewayResult<GatewayOrder>> {
     this.calls.push({ op: 'capture', orderId, requestId });
     const fault = this.takeFault('capture');
-    if (fault?.kind === 'ambiguous-before-success') return { kind: 'ambiguous', reason: 'scripted timeout before PayPal received the capture' };
+    if (fault?.kind === 'ambiguous-before-success')
+      return { kind: 'ambiguous', reason: 'scripted timeout before PayPal received the capture' };
     const prior = this.requestIds.get(`capture:${requestId}`);
     if (prior) return prior;
     const o = this.orders.get(orderId);
-    if (!o) return { kind: 'rejected', status: 404, name: 'RESOURCE_NOT_FOUND', message: 'order not found', issues: [], debugId: null };
-    if (o.order.status === 'COMPLETED') return { kind: 'rejected', status: 422, name: 'UNPROCESSABLE_ENTITY', message: 'already captured', issues: ['ORDER_ALREADY_CAPTURED'], debugId: null };
-    if (!o.approved) return { kind: 'rejected', status: 422, name: 'UNPROCESSABLE_ENTITY', message: 'not approved', issues: ['ORDER_NOT_APPROVED'], debugId: null };
+    if (!o)
+      return {
+        kind: 'rejected',
+        status: 404,
+        name: 'RESOURCE_NOT_FOUND',
+        message: 'order not found',
+        issues: [],
+        debugId: null,
+      };
+    if (o.order.status === 'COMPLETED')
+      return {
+        kind: 'rejected',
+        status: 422,
+        name: 'UNPROCESSABLE_ENTITY',
+        message: 'already captured',
+        issues: ['ORDER_ALREADY_CAPTURED'],
+        debugId: null,
+      };
+    if (!o.approved)
+      return {
+        kind: 'rejected',
+        status: 422,
+        name: 'UNPROCESSABLE_ENTITY',
+        message: 'not approved',
+        issues: ['ORDER_NOT_APPROVED'],
+        debugId: null,
+      };
     if (fault?.kind === 'declined') {
-      return { kind: 'rejected', status: 422, name: 'UNPROCESSABLE_ENTITY', message: 'instrument declined', issues: ['INSTRUMENT_DECLINED'], debugId: null };
+      return {
+        kind: 'rejected',
+        status: 422,
+        name: 'UNPROCESSABLE_ENTITY',
+        message: 'instrument declined',
+        issues: ['INSTRUMENT_DECLINED'],
+        debugId: null,
+      };
     }
     const status = fault?.kind === 'pending' ? 'PENDING' : 'COMPLETED';
-    const amount = fault?.kind === 'amount-mismatch' ? o.input.totalCents - 1000 : o.input.totalCents;
+    const amount =
+      fault?.kind === 'amount-mismatch' ? o.input.totalCents - 1000 : o.input.totalCents;
     o.order = {
       ...o.order,
       status: 'COMPLETED',
       captures: [{ id: `CAP-${orderId}`, status, amountCents: amount, currency: 'USD' }],
     };
-    const result: GatewayResult<GatewayOrder> = { kind: 'ok', value: o.order, debugId: `dbg-cap-${orderId}` };
+    const result: GatewayResult<GatewayOrder> = {
+      kind: 'ok',
+      value: o.order,
+      debugId: `dbg-cap-${orderId}`,
+    };
     this.requestIds.set(`capture:${requestId}`, result);
-    if (fault?.kind === 'ambiguous-after-success') return { kind: 'ambiguous', reason: 'scripted timeout after PayPal captured the payment' };
+    if (fault?.kind === 'ambiguous-after-success')
+      return { kind: 'ambiguous', reason: 'scripted timeout after PayPal captured the payment' };
     return result;
   }
 }

@@ -5,14 +5,30 @@ import { FixtureSource } from '../../server/catalog/fixtures.js';
 import { ScriptedGateway } from '../../server/payments/scriptedGateway.js';
 import type { Deps } from '../../server/services/core.js';
 import { Store } from '../../server/repo/store.js';
-import { createMission, floodScenarioInput, FLOOD_SCENARIO_KEY } from '../../server/services/missions.js';
+import {
+  createMission,
+  floodScenarioInput,
+  FLOOD_SCENARIO_KEY,
+} from '../../server/services/missions.js';
 import type { MissionAgent } from '../../server/ai/types.js';
 import type { ProductSource } from '../../server/catalog/source.js';
 
-export const silentLog = { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined };
+export const silentLog = {
+  info: () => undefined,
+  warn: () => undefined,
+  error: () => undefined,
+  debug: () => undefined,
+};
 
 /** A fully wired service graph on an in-memory PostgreSQL (PGlite) with a scripted PayPal. */
-export async function makeHarness(opts: { now?: Date; catalog?: ProductSource | null; claudeAgent?: MissionAgent | null; gateway?: ScriptedGateway | null } = {}) {
+export async function makeHarness(
+  opts: {
+    now?: Date;
+    catalog?: ProductSource | null;
+    claudeAgent?: MissionAgent | null;
+    gateway?: ScriptedGateway | null;
+  } = {},
+) {
   const db = await openDatabase({ databaseUrl: null, pgliteDataDir: null });
   await migrate(db);
   const gateway = opts.gateway === undefined ? new ScriptedGateway() : opts.gateway;
@@ -30,8 +46,15 @@ export async function makeHarness(opts: { now?: Date; catalog?: ProductSource | 
   };
   const workspaceId = '11111111-1111-4111-8111-111111111111';
   await new Store(db).createWorkspace(workspaceId, 'test');
-  const input = { ...floodScenarioInput(clock), date: '2026-10-20', plannerMode: 'deterministic' as const };
-  const mission = await createMission(deps, workspaceId, input, { scenarioKey: FLOOD_SCENARIO_KEY, actor: 'test' });
+  const input = {
+    ...floodScenarioInput(clock),
+    date: '2026-10-20',
+    plannerMode: 'deterministic' as const,
+  };
+  const mission = await createMission(deps, workspaceId, input, {
+    scenarioKey: FLOOD_SCENARIO_KEY,
+    actor: 'test',
+  });
   return {
     db,
     deps,

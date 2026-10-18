@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import { MARKET_EVENT_INFO, MARKET_EVENTS, type MarketEventKind } from '../../../shared/contracts';
-import { useMarketEvent, useMission, useRunSecuritySuite, useSecurityCatalog, useSecurityRuns } from '../api/hooks';
+import {
+  useMarketEvent,
+  useMission,
+  useRunSecuritySuite,
+  useSecurityCatalog,
+  useSecurityRuns,
+} from '../api/hooks';
 import type { DrillOutcome } from '../api/types';
 import { Badge, Button, Callout, errorText, Panel, QueryView, useToast } from '../components/ui';
 import { PolicyVerdict } from '../features/PolicyVerdict';
@@ -25,22 +31,45 @@ export function SecurityPage() {
         <div>
           <h1>Security lab</h1>
           <p className="lede">
-            DEADMAN is the independent policy gate between every AI proposal and PayPal. Drills attack this mission's live plan; the suite replays eight attack scenarios against the real services in an isolated database. The adversary can find failures — it can never grant permission.
+            DEADMAN is the independent policy gate between every AI proposal and PayPal. Drills
+            attack this mission's live plan; the suite replays eight attack scenarios against the
+            real services in an isolated database. The adversary can find failures — it can never
+            grant permission.
           </p>
         </div>
       </div>
 
       <QueryView q={mq}>
         {(d) => {
-          const open = d.activeProposal && ['AWAITING_APPROVAL', 'APPROVED', 'VALIDATED'].includes(d.activeProposal.status);
+          const open =
+            d.activeProposal &&
+            ['AWAITING_APPROVAL', 'APPROVED', 'VALIDATED'].includes(d.activeProposal.status);
           const blocked = d.mission.status === 'EXECUTING';
           return (
-            <Panel title="Live drills on this mission" sub="Changes simulated supplier state, then re-runs the gate on the open proposal">
-              {!d.activeProposal && <Callout tone="info">Plan the mission first; drills attack the open proposal.</Callout>}
-              {blocked && <Callout tone="warn">A payment is in progress. Drills are disabled until it resolves.</Callout>}
-              <div className="grid cols-4" style={{ marginTop: d.activeProposal && !blocked ? 0 : 12 }}>
+            <Panel
+              title="Live drills on this mission"
+              sub="Changes simulated supplier state, then re-runs the gate on the open proposal"
+            >
+              {!d.activeProposal && (
+                <Callout tone="info">
+                  Plan the mission first; drills attack the open proposal.
+                </Callout>
+              )}
+              {blocked && (
+                <Callout tone="warn">
+                  A payment is in progress. Drills are disabled until it resolves.
+                </Callout>
+              )}
+              <div
+                className="grid cols-4"
+                style={{ marginTop: d.activeProposal && !blocked ? 0 : 12 }}
+              >
                 {MARKET_EVENTS.map((k) => (
-                  <div key={k} className="panel" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div
+                    key={k}
+                    className="panel"
+                    style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
+                  >
                     <div className="strong">{MARKET_EVENT_INFO[k].title}</div>
                     <div className="small text-2" style={{ flex: 1 }}>
                       {MARKET_EVENT_INFO[k].description}
@@ -48,15 +77,27 @@ export function SecurityPage() {
                     <Button
                       size="sm"
                       variant={k === 'injected-listing' ? 'danger' : undefined}
-                      disabled={!d.activeProposal || blocked || (k !== 'injected-listing' && !open) || drill.isPending}
+                      disabled={
+                        !d.activeProposal ||
+                        blocked ||
+                        (k !== 'injected-listing' && !open) ||
+                        drill.isPending
+                      }
                       loading={running === k}
                       onClick={() => {
                         setRunning(k);
                         drill.mutate(k, {
                           onSuccess: (r) => {
                             setLast(r);
-                            const denied = r.revalidated?.decision.outcome === 'DENY' || r.changed.some((c) => /DENY/.test(c));
-                            toast(denied ? 'ok' : 'info', denied ? 'Gate blocked the drill' : 'Drill applied; the open proposal still passes');
+                            const denied =
+                              r.revalidated?.decision.outcome === 'DENY' ||
+                              r.changed.some((c) => /DENY/.test(c));
+                            toast(
+                              denied ? 'ok' : 'info',
+                              denied
+                                ? 'Gate blocked the drill'
+                                : 'Drill applied; the open proposal still passes',
+                            );
                           },
                           onError: (e) => toast('danger', errorText(e)),
                           onSettled: () => setRunning(null),
@@ -77,9 +118,15 @@ export function SecurityPage() {
                     ))}
                   </ul>
                   {last.revalidated ? (
-                    <PolicyVerdict key={last.revalidated.decision.id} decision={last.revalidated.decision} timeZone={d.mission.timezone} />
+                    <PolicyVerdict
+                      key={last.revalidated.decision.id}
+                      decision={last.revalidated.decision}
+                      timeZone={d.mission.timezone}
+                    />
                   ) : (
-                    <div className="small muted">See Procurement for the compromised proposal and its rejection.</div>
+                    <div className="small muted">
+                      See Procurement for the compromised proposal and its rejection.
+                    </div>
                   )}
                 </div>
               )}
@@ -97,7 +144,11 @@ export function SecurityPage() {
             loading={suite.isPending}
             onClick={() =>
               suite.mutate(undefined, {
-                onSuccess: (r) => toast(r.failed === 0 ? 'ok' : 'danger', `${r.passed}/${r.results.length} scenarios enforced`),
+                onSuccess: (r) =>
+                  toast(
+                    r.failed === 0 ? 'ok' : 'danger',
+                    `${r.passed}/${r.results.length} scenarios enforced`,
+                  ),
                 onError: (e) => toast('danger', errorText(e)),
               })
             }
@@ -142,7 +193,8 @@ export function SecurityPage() {
                     {run.passed}/{run.results.length} enforced
                   </Badge>
                   <span className="small muted">
-                    {run.suiteVersion} · {dateTime(run.finishedAt)} · {Math.round(run.results.reduce((a, r) => a + r.durationMs, 0) / 100) / 10}s
+                    {run.suiteVersion} · {dateTime(run.finishedAt)} ·{' '}
+                    {Math.round(run.results.reduce((a, r) => a + r.durationMs, 0) / 100) / 10}s
                   </span>
                 </div>
                 <table className="tbl">
@@ -159,7 +211,9 @@ export function SecurityPage() {
                     {run.results.map((r) => (
                       <tr key={r.scenarioId}>
                         <td>
-                          <Badge tone={r.passed ? 'ok' : 'danger'}>{r.passed ? 'Pass' : 'Fail'}</Badge>
+                          <Badge tone={r.passed ? 'ok' : 'danger'}>
+                            {r.passed ? 'Pass' : 'Fail'}
+                          </Badge>
                         </td>
                         <td>
                           <div className="strong">{r.title}</div>

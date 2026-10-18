@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { centsToDecimalString, decimalStringToCents, sumCents, toCents } from '../../shared/money.js';
+import {
+  centsToDecimalString,
+  decimalStringToCents,
+  sumCents,
+  toCents,
+} from '../../shared/money.js';
 
 describe('money', () => {
   it('converts provider decimals to integer cents without drift', () => {

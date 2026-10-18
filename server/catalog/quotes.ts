@@ -55,7 +55,9 @@ export function simulateQuote(input: QuoteInput): SimulatedQuote {
 
   // Courier dispatch fee per merchant, plus a per-pack handling charge weighted by item weight.
   const shippingBaseCents = between(merchant, 1500, 4500);
-  const shippingPerPackCents = HEAVY.includes(input.category) ? between(item, 40, 120) : between(item, 10, 60);
+  const shippingPerPackCents = HEAVY.includes(input.category)
+    ? between(item, 40, 120)
+    : between(item, 10, 60);
 
   const dispatchOffsetMin = between(item, 20, 90);
   const transitMin = between(merchant, 70, 280) + between(item, 0, 40);

@@ -1,4 +1,10 @@
-import type { Mission, PolicyDecision, ProductCandidate, Proposal, Requirement } from '../../shared/types.js';
+import type {
+  Mission,
+  PolicyDecision,
+  ProductCandidate,
+  Proposal,
+  Requirement,
+} from '../../shared/types.js';
 import { toCents } from '../../shared/money.js';
 import type { Explanation, SelectionOption } from '../ai/types.js';
 import { checkSpec, parseAttributes, parsePack } from '../catalog/evidence.js';
@@ -11,10 +17,26 @@ import { eligibilityReasons, optimizePlan, type PlanResult } from '../planning/o
 import { materialTermsHash } from '../planning/hash.js';
 import { buildSchedule } from '../schedule/schedule.js';
 import type { Store } from '../repo/store.js';
-import { agentFor, evaluateAndRecord, inTx, loadPolicyContext, missionCommitments, newId, store, type Deps } from './core.js';
+import {
+  agentFor,
+  evaluateAndRecord,
+  inTx,
+  loadPolicyContext,
+  missionCommitments,
+  newId,
+  store,
+  type Deps,
+} from './core.js';
 
 const CATALOG_CACHE_MINUTES = 30;
-const PLANNABLE: Mission['status'][] = ['DRAFT', 'PLANNING', 'NEEDS_REVIEW', 'READY_FOR_APPROVAL', 'PARTIALLY_FULFILLED', 'BLOCKED'];
+const PLANNABLE: Mission['status'][] = [
+  'DRAFT',
+  'PLANNING',
+  'NEEDS_REVIEW',
+  'READY_FOR_APPROVAL',
+  'PARTIALLY_FULFILLED',
+  'BLOCKED',
+];
 
 export interface PlanOutcome {
   proposal: Proposal;
@@ -26,18 +48,33 @@ export interface PlanOutcome {
 // ---- requirements ----------------------------------------------------------------------
 
 async function ensureRequirements(s: Store, mission: Mission): Promise<Requirement[]> {
-  if ((await s.requirementsVersion(mission.id)) === mission.version) return s.listRequirements(mission.id);
-  const derived = deriveRequirements(mission).map((d, position) => ({ ...d, id: newId(), missionId: mission.id, position }));
+  if ((await s.requirementsVersion(mission.id)) === mission.version)
+    return s.listRequirements(mission.id);
+  const derived = deriveRequirements(mission).map((d, position) => ({
+    ...d,
+    id: newId(),
+    missionId: mission.id,
+    position,
+  }));
   await s.replaceRequirements(mission.id, mission.version, derived);
   return s.listRequirements(mission.id);
 }
 
 // ---- catalog retrieval -----------------------------------------------------------------
 
-function evaluateListing(mission: Mission, req: Requirement, l: RawListing, now: Date): ProductCandidate {
+function evaluateListing(
+  mission: Mission,
+  req: Requirement,
+  l: RawListing,
+  now: Date,
+): ProductCandidate {
   const pack = parsePack(req.category, l.title, l.description);
   const attributes = parseAttributes(l.title, l.description);
-  const contentFlags = scanContent({ title: l.title, description: l.description, merchant: l.merchantDomain });
+  const contentFlags = scanContent({
+    title: l.title,
+    description: l.description,
+    merchant: l.merchantDomain,
+  });
   return {
     id: newId(),
     missionId: mission.id,
@@ -63,15 +100,25 @@ function evaluateListing(mission: Mission, req: Requirement, l: RawListing, now:
   };
 }
 
-async function retrieveCandidates(deps: Deps, workspaceId: string, mission: Mission, requirements: Requirement[], refresh: boolean) {
+async function retrieveCandidates(
+  deps: Deps,
+  workspaceId: string,
+  mission: Mission,
+  requirements: Requirement[],
+  refresh: boolean,
+) {
   const s = store(deps);
   const now = deps.now();
   const existing = await s.listCandidates(mission.id);
   const quotes = await s.currentQuotes(mission.id);
   let usedFallback = false;
   for (const req of requirements) {
-    const mine = existing.filter((c) => c.requirementId === req.id && c.provenance !== 'simulated-adversarial');
-    const fresh = mine.some((c) => now.getTime() - new Date(c.retrievedAt).getTime() < CATALOG_CACHE_MINUTES * 60_000);
+    const mine = existing.filter(
+      (c) => c.requirementId === req.id && c.provenance !== 'simulated-adversarial',
+    );
+    const fresh = mine.some(
+      (c) => now.getTime() - new Date(c.retrievedAt).getTime() < CATALOG_CACHE_MINUTES * 60_000,
+    );
     if (mine.length > 0 && fresh && !refresh) continue;
 
     let listings: RawListing[] = [];
@@ -79,14 +126,23 @@ async function retrieveCandidates(deps: Deps, workspaceId: string, mission: Miss
     let fallbackReason: string | null = null;
     if (deps.catalog) {
       try {
-        listings = await deps.catalog.search({ query: req.searchQuery, limit: 12, category: req.category });
+        listings = await deps.catalog.search({
+          query: req.searchQuery,
+          limit: 12,
+          category: req.category,
+        });
         if (listings.length === 0) fallbackReason = 'Channel3 returned no results';
       } catch (err) {
-        fallbackReason = err instanceof CatalogError ? err.message : `Channel3 error: ${(err as Error).message}`;
+        fallbackReason =
+          err instanceof CatalogError ? err.message : `Channel3 error: ${(err as Error).message}`;
       }
     }
     if (!deps.catalog || fallbackReason) {
-      listings = await deps.fixtures.search({ query: req.searchQuery, limit: 12, category: req.category });
+      listings = await deps.fixtures.search({
+        query: req.searchQuery,
+        limit: 12,
+        category: req.category,
+      });
       if (deps.catalog) {
         usedFallback = true;
         source = 'fixture';
@@ -94,12 +150,14 @@ async function retrieveCandidates(deps: Deps, workspaceId: string, mission: Miss
     }
 
     const saved: ProductCandidate[] = [];
-    for (const l of listings) saved.push(await s.upsertCandidate(evaluateListing(mission, req, l, now), l.raw));
+    for (const l of listings)
+      saved.push(await s.upsertCandidate(evaluateListing(mission, req, l, now), l.raw));
 
     // Attach a simulated supplier commitment to every priceable, sized listing that lacks one.
     const window = new Date(mission.windowStart);
     for (const c of saved) {
-      if (quotes.has(c.id) || c.priceCents === null || !c.pack.unitsPerPack || !c.merchantDomain) continue;
+      if (quotes.has(c.id) || c.priceCents === null || !c.pack.unitsPerPack || !c.merchantDomain)
+        continue;
       const q = simulateQuote({
         // Scenario missions share a seed so the rehearsed demo sees identical simulated commitments.
         missionId: mission.scenarioKey ? `scenario:${mission.scenarioKey}` : mission.id,
@@ -135,10 +193,17 @@ async function retrieveCandidates(deps: Deps, workspaceId: string, mission: Miss
         missionId: mission.id,
         type: fallbackReason && deps.catalog ? 'catalog.fallback' : 'catalog.retrieved',
         actor: `catalog:${source}`,
-        summary: fallbackReason && deps.catalog
-          ? `${req.label}: Channel3 unavailable (${fallbackReason}); used ${saved.length} labelled fixture listings`
-          : `${req.label}: retrieved ${saved.length} ${source} listings (${saved.filter((c) => c.quarantined).length} quarantined, ${saved.filter((c) => !c.specCheck.passed).length} failing spec)`,
-        data: { requirementId: req.id, query: req.searchQuery, source, count: saved.length, fallbackReason },
+        summary:
+          fallbackReason && deps.catalog
+            ? `${req.label}: Channel3 unavailable (${fallbackReason}); used ${saved.length} labelled fixture listings`
+            : `${req.label}: retrieved ${saved.length} ${source} listings (${saved.filter((c) => c.quarantined).length} quarantined, ${saved.filter((c) => !c.specCheck.passed).length} failing spec)`,
+        data: {
+          requirementId: req.id,
+          query: req.searchQuery,
+          source,
+          count: saved.length,
+          fallbackReason,
+        },
       }),
     );
   }
@@ -147,7 +212,18 @@ async function retrieveCandidates(deps: Deps, workspaceId: string, mission: Miss
 
 // ---- proposal construction ---------------------------------------------------------------
 
-function proposalFromPlan(mission: Mission, plan: PlanResult, version: number, meta: { parentId: string | null; createdBy: string; plannerMode: Proposal['plannerMode']; rationale: string; now: Date }): Proposal {
+function proposalFromPlan(
+  mission: Mission,
+  plan: PlanResult,
+  version: number,
+  meta: {
+    parentId: string | null;
+    createdBy: string;
+    plannerMode: Proposal['plannerMode'];
+    rationale: string;
+    now: Date;
+  },
+): Proposal {
   const lines = plan.lines.map((l) => ({
     id: newId(),
     requirementId: l.requirementId,
@@ -166,7 +242,13 @@ function proposalFromPlan(mission: Mission, plan: PlanResult, version: number, m
     missionId: mission.id,
     missionVersion: mission.version,
     currency: mission.currency,
-    lines: lines.map((l) => ({ requirementId: l.requirementId, candidateId: l.candidateId, quoteId: l.quoteId, quantityPacks: l.quantityPacks, unitPriceCents: l.unitPriceCents })),
+    lines: lines.map((l) => ({
+      requirementId: l.requirementId,
+      candidateId: l.candidateId,
+      quoteId: l.quoteId,
+      quantityPacks: l.quantityPacks,
+      unitPriceCents: l.unitPriceCents,
+    })),
     shipping: plan.shipping,
     subtotalCents: plan.subtotalCents,
     shippingCents: plan.shippingCents,
@@ -207,12 +289,18 @@ function diffProposals(prev: Proposal | null, next: Proposal): string[] {
     const n = nextMap.get(k);
     if (!n) changes.push(`Removed ${l.quantityPacks} × "${l.title}" (${l.merchantDomain})`);
     else if (n.quantityPacks !== l.quantityPacks || n.unitPriceCents !== l.unitPriceCents) {
-      changes.push(`Changed "${l.title}": ${l.quantityPacks} → ${n.quantityPacks} packs at $${(n.unitPriceCents / 100).toFixed(2)}`);
+      changes.push(
+        `Changed "${l.title}": ${l.quantityPacks} → ${n.quantityPacks} packs at $${(n.unitPriceCents / 100).toFixed(2)}`,
+      );
     }
   }
-  for (const [k, n] of nextMap) if (!prevMap.has(k)) changes.push(`Added ${n.quantityPacks} × "${n.title}" (${n.merchantDomain})`);
+  for (const [k, n] of nextMap)
+    if (!prevMap.has(k))
+      changes.push(`Added ${n.quantityPacks} × "${n.title}" (${n.merchantDomain})`);
   const delta = next.totalCents - prev.totalCents;
-  changes.push(`Total ${delta >= 0 ? 'up' : 'down'} $${(Math.abs(delta) / 100).toFixed(2)} to $${(next.totalCents / 100).toFixed(2)}`);
+  changes.push(
+    `Total ${delta >= 0 ? 'up' : 'down'} $${(Math.abs(delta) / 100).toFixed(2)} to $${(next.totalCents / 100).toFixed(2)}`,
+  );
   return changes;
 }
 
@@ -227,7 +315,12 @@ async function supersedeOpen(s: Store, missionId: string, exceptId: string, reas
   }
 }
 
-export async function rebuildSchedule(s: Store, mission: Mission, proposal: Proposal, confirmed: boolean) {
+export async function rebuildSchedule(
+  s: Store,
+  mission: Mission,
+  proposal: Proposal,
+  confirmed: boolean,
+) {
   const tasks = buildSchedule({
     missionId: mission.id,
     destination: mission.destination,
@@ -255,12 +348,29 @@ export async function planMission(
   // Phase 1 — transition to PLANNING and (re)derive requirements for the current mission version.
   const { mission, requirements, parent } = await inTx(deps, async (tx) => {
     const m = await tx.getMission(workspaceId, missionId, true);
-    if (!PLANNABLE.includes(m.status)) throw illegalState(`Mission is ${m.status}; planning is not permitted now`);
-    const unresolved = (await tx.listPayments(missionId)).some((p) => ['UNKNOWN', 'PROVIDER_PENDING', 'CAPTURE_PENDING', 'APPROVAL_PENDING', 'CREATED', 'NOT_CREATED'].includes(p.status));
-    if (unresolved) throw illegalState('A payment for this mission is in progress or unresolved; resolve it before re-planning');
-    const parentProposal = opts.recoverFrom ? await tx.getProposal(missionId, opts.recoverFrom) : null;
+    if (!PLANNABLE.includes(m.status))
+      throw illegalState(`Mission is ${m.status}; planning is not permitted now`);
+    const unresolved = (await tx.listPayments(missionId)).some((p) =>
+      [
+        'UNKNOWN',
+        'PROVIDER_PENDING',
+        'CAPTURE_PENDING',
+        'APPROVAL_PENDING',
+        'CREATED',
+        'NOT_CREATED',
+      ].includes(p.status),
+    );
+    if (unresolved)
+      throw illegalState(
+        'A payment for this mission is in progress or unresolved; resolve it before re-planning',
+      );
+    const parentProposal = opts.recoverFrom
+      ? await tx.getProposal(missionId, opts.recoverFrom)
+      : null;
     if (parentProposal && !['REJECTED', 'INVALIDATED', 'FAILED'].includes(parentProposal.status)) {
-      throw illegalState(`Recovery applies to a rejected or invalidated proposal; v${parentProposal.version} is ${parentProposal.status}`);
+      throw illegalState(
+        `Recovery applies to a rejected or invalidated proposal; v${parentProposal.version} is ${parentProposal.status}`,
+      );
     }
     await tx.setMissionStatus(missionId, m.status, 'PLANNING');
     const reqs = await ensureRequirements(tx, { ...m, status: 'PLANNING' });
@@ -269,15 +379,36 @@ export async function planMission(
       missionId,
       type: parentProposal ? 'recovery.started' : 'planning.started',
       actor: opts.actor,
-      summary: parentProposal ? `Recovery planning started from rejected v${parentProposal.version}` : `Planning started for ${reqs.length} requirements`,
-      data: { missionVersion: m.version, requirements: reqs.map((r) => ({ id: r.id, label: r.label, quantity: r.quantity, unit: r.unit, priority: r.priority })) },
+      summary: parentProposal
+        ? `Recovery planning started from rejected v${parentProposal.version}`
+        : `Planning started for ${reqs.length} requirements`,
+      data: {
+        missionVersion: m.version,
+        requirements: reqs.map((r) => ({
+          id: r.id,
+          label: r.label,
+          quantity: r.quantity,
+          unit: r.unit,
+          priority: r.priority,
+        })),
+      },
     });
-    return { mission: { ...m, status: 'PLANNING' as const }, requirements: reqs, parent: parentProposal };
+    return {
+      mission: { ...m, status: 'PLANNING' as const },
+      requirements: reqs,
+      parent: parentProposal,
+    };
   });
 
   try {
     // Phase 2 — product discovery (external calls happen outside any DB transaction).
-    await retrieveCandidates(deps, workspaceId, mission, requirements, !!opts.refreshCatalog && !parent);
+    await retrieveCandidates(
+      deps,
+      workspaceId,
+      mission,
+      requirements,
+      !!opts.refreshCatalog && !parent,
+    );
 
     const candidates = await s.listCandidates(missionId);
     const quotes = await s.currentQuotes(missionId);
@@ -296,7 +427,10 @@ export async function planMission(
         title: o.candidate.title,
         merchantDomain: o.candidate.merchantDomain!,
         provenance: o.candidate.provenance,
-        costPerUnitCents: Math.round((o.quote!.unitPriceCents + o.quote!.shippingPerPackCents) / o.candidate.pack.unitsPerPack!),
+        costPerUnitCents: Math.round(
+          (o.quote!.unitPriceCents + o.quote!.shippingPerPackCents) /
+            o.candidate.pack.unitsPerPack!,
+        ),
         unit: req.unit,
         eta: o.quote!.eta,
         packEvidence: o.candidate.pack.evidence ?? '',
@@ -304,7 +438,14 @@ export async function planMission(
       });
     }
     const selection = await agent.select({
-      requirements: requirements.map((r) => ({ id: r.id, label: r.label, category: r.category, quantity: r.quantity, unit: r.unit, priority: r.priority })),
+      requirements: requirements.map((r) => ({
+        id: r.id,
+        label: r.label,
+        category: r.category,
+        quantity: r.quantity,
+        unit: r.unit,
+        priority: r.priority,
+      })),
       options: eligible,
     });
     await s.insertAgentRun({
@@ -325,7 +466,15 @@ export async function planMission(
     for (const flag of selection.output.suspiciousListings) {
       const c = candidates.find((x) => x.id === flag.candidateId);
       if (c && !c.quarantined) {
-        const flags = [...c.contentFlags, { rule: 'agent-reported', field: 'description' as const, excerpt: flag.reason.slice(0, 200), severity: 'block' as const }];
+        const flags = [
+          ...c.contentFlags,
+          {
+            rule: 'agent-reported',
+            field: 'description' as const,
+            excerpt: flag.reason.slice(0, 200),
+            severity: 'block' as const,
+          },
+        ];
         await s.quarantineCandidate(c.id, flags);
         c.quarantined = true;
         c.contentFlags = flags;
@@ -333,11 +482,17 @@ export async function planMission(
     }
     for (const sel of selection.output.selections) {
       for (const [rank, id] of sel.candidateIds.entries()) {
-        await s.setSuitability(id, { score: Math.max(0, 100 - rank * 15), notes: rank === 0 ? sel.rationale : `Ranked #${rank + 1}`, evaluator: selection.mode });
+        await s.setSuitability(id, {
+          score: Math.max(0, 100 - rank * 15),
+          notes: rank === 0 ? sel.rationale : `Ranked #${rank + 1}`,
+          evaluator: selection.mode,
+        });
       }
     }
 
-    const preferred = Object.fromEntries(selection.output.selections.map((x) => [x.requirementId, x.candidateIds]));
+    const preferred = Object.fromEntries(
+      selection.output.selections.map((x) => [x.requirementId, x.candidateIds]),
+    );
     const plan = optimizePlan({
       requirements,
       options,
@@ -357,7 +512,11 @@ export async function planMission(
         parentId: parent?.id ?? null,
         createdBy: parent ? `recovery-planner:${selection.mode}` : `buyer-agent:${selection.mode}`,
         plannerMode: selection.mode,
-        rationale: selection.output.selections.map((x) => x.rationale).filter(Boolean).slice(0, 5).join(' '),
+        rationale: selection.output.selections
+          .map((x) => x.rationale)
+          .filter(Boolean)
+          .slice(0, 5)
+          .join(' '),
         now,
       });
       await tx.insertProposal(proposal);
@@ -368,7 +527,14 @@ export async function planMission(
         type: 'proposal.generated',
         actor: proposal.createdBy,
         summary: `Proposal v${version}: ${proposal.lines.length} lines, $${(proposal.totalCents / 100).toFixed(2)} of $${(m.budgetCents / 100).toFixed(2)}${proposal.gaps.length ? `, ${proposal.gaps.length} gap(s)` : ''}`,
-        data: { proposalId: proposal.id, version, totalCents: proposal.totalCents, contentHash: proposal.contentHash, gaps: proposal.gaps, exclusions: plan.exclusions.length },
+        data: {
+          proposalId: proposal.id,
+          version,
+          totalCents: proposal.totalCents,
+          contentHash: proposal.contentHash,
+          gaps: proposal.gaps,
+          exclusions: plan.exclusions.length,
+        },
       });
 
       if (proposal.lines.length === 0) {
@@ -376,8 +542,18 @@ export async function planMission(
         const decision = await evaluateAndRecord(tx, ctx);
         await tx.setProposalStatus(proposal.id, 'DRAFT', 'REJECTED');
         await tx.setMissionStatus(missionId, m.status, 'BLOCKED');
-        await tx.audit({ workspaceId, missionId, type: 'mission.blocked', actor: 'policy:deadman', summary: 'No feasible plan within the mission constraints', data: { gaps: proposal.gaps } });
-        return { proposal: { ...proposal, status: 'REJECTED' as const, latestDecision: decision }, decision };
+        await tx.audit({
+          workspaceId,
+          missionId,
+          type: 'mission.blocked',
+          actor: 'policy:deadman',
+          summary: 'No feasible plan within the mission constraints',
+          data: { gaps: proposal.gaps },
+        });
+        return {
+          proposal: { ...proposal, status: 'REJECTED' as const, latestDecision: decision },
+          decision,
+        };
       }
 
       const ctx = await loadPolicyContext(tx, m, proposal, 'validation', { now });
@@ -399,7 +575,11 @@ export async function planMission(
           decision.outcome === 'ALLOW'
             ? `Proposal v${version} passed ${decision.checks.length} policy checks; awaiting human approval`
             : `Proposal v${version} rejected: ${decision.violations.map((v) => v.checkId).join(', ')}`,
-        data: { decisionId: decision.id, violations: decision.violations, warnings: decision.warnings },
+        data: {
+          decisionId: decision.id,
+          violations: decision.violations,
+          warnings: decision.warnings,
+        },
       });
       const stored = await tx.getProposal(missionId, proposal.id);
       await rebuildSchedule(tx, m, stored, false);
@@ -407,20 +587,39 @@ export async function planMission(
     });
 
     // Phase 5 — explanation for the coordinator (never consulted by the gate).
-    const explanation = await explainOutcome(deps, mission, result.proposal, result.decision, parent);
+    const explanation = await explainOutcome(
+      deps,
+      mission,
+      result.proposal,
+      result.decision,
+      parent,
+    );
     return { ...result, explanation: explanation.output, exclusions: plan.exclusions };
   } catch (err) {
     // Leave the mission in a reviewable state rather than stuck in PLANNING.
     await inTx(deps, async (tx) => {
       const m = await tx.getMission(workspaceId, missionId, true);
       if (m.status === 'PLANNING') await tx.setMissionStatus(missionId, 'PLANNING', 'NEEDS_REVIEW');
-      await tx.audit({ workspaceId, missionId, type: 'planning.failed', actor: 'system', summary: `Planning failed: ${(err as Error).message}`, data: {} });
+      await tx.audit({
+        workspaceId,
+        missionId,
+        type: 'planning.failed',
+        actor: 'system',
+        summary: `Planning failed: ${(err as Error).message}`,
+        data: {},
+      });
     }).catch(() => undefined);
     throw err;
   }
 }
 
-export async function explainOutcome(deps: Deps, mission: Mission, proposal: Proposal, decision: PolicyDecision, parent: Proposal | null) {
+export async function explainOutcome(
+  deps: Deps,
+  mission: Mission,
+  proposal: Proposal,
+  decision: PolicyDecision,
+  parent: Proposal | null,
+) {
   const agent = agentFor(deps, mission);
   const res = await agent.explain({
     kind: decision.outcome === 'DENY' ? 'rejection' : parent ? 'recovery' : 'approval-ready',
@@ -428,7 +627,11 @@ export async function explainOutcome(deps: Deps, mission: Mission, proposal: Pro
     violations: decision.violations.map((v) => ({ checkId: v.checkId, message: v.message })),
     warnings: decision.warnings.map((v) => ({ checkId: v.checkId, message: v.message })),
     changes: diffProposals(parent, proposal),
-    gaps: proposal.gaps.map((g) => ({ label: g.label, shortfallUnits: g.shortfallUnits, reason: g.reason })),
+    gaps: proposal.gaps.map((g) => ({
+      label: g.label,
+      shortfallUnits: g.shortfallUnits,
+      reason: g.reason,
+    })),
     totalCents: proposal.totalCents,
     budgetCents: mission.budgetCents,
   });

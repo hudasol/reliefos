@@ -13,7 +13,13 @@ async function appWith(opts: { gateway?: 'scripted' | 'none' } = {}) {
     sessionSecret: 'test-secret',
     secureCookies: false,
     staticDir: null,
-    publicConfig: () => ({ paypal: { enabled: !!h.deps.gateway, clientId: null, environment: 'sandbox' }, agStudioLicenseKey: null, agGridLicenseKey: null, integrations: [], build: { version: 't', commit: null } }),
+    publicConfig: () => ({
+      paypal: { enabled: !!h.deps.gateway, clientId: null, environment: 'sandbox' },
+      agStudioLicenseKey: null,
+      agGridLicenseKey: null,
+      integrations: [],
+      build: { version: 't', commit: null },
+    }),
   });
   const agent = request.agent(app);
   const session = await agent.get('/api/session').expect(200);
@@ -29,7 +35,12 @@ describe('HTTP API', () => {
     expect(session.headers['set-cookie']?.[0]).toMatch(/rlf_ws=.*HttpOnly; SameSite=Lax/);
     const missions = await agent.get('/api/missions').expect(200);
     expect(missions.body).toHaveLength(1);
-    expect(missions.body[0]).toMatchObject({ budgetCents: 400_000, population: 120, status: 'DRAFT', scenarioKey: 'flood-east-shelter' });
+    expect(missions.body[0]).toMatchObject({
+      budgetCents: 400_000,
+      population: 120,
+      status: 'DRAFT',
+      scenarioKey: 'flood-east-shelter',
+    });
   });
 
   it('rejects requests without a session and mutations without the request header', async () => {
@@ -50,7 +61,11 @@ describe('HTTP API', () => {
 
   it('validates request bodies at the boundary', async () => {
     const { agent } = await appWith();
-    const res = await agent.post('/api/missions').set(H).send({ title: 'x', budgetUsd: -5 }).expect(400);
+    const res = await agent
+      .post('/api/missions')
+      .set(H)
+      .send({ title: 'x', budgetUsd: -5 })
+      .expect(400);
     expect(res.body.error.code).toBe('VALIDATION_FAILED');
     expect(res.body.error.details.length).toBeGreaterThan(0);
   });
@@ -66,23 +81,45 @@ describe('HTTP API', () => {
     await agent
       .post(`/api/missions/${mission.id}/proposals/${p.id}/approve`)
       .set(H)
-      .send({ approverName: 'Dana Reyes', expectedContentHash: 'a'.repeat(64), expectedTotalCents: p.totalCents, acknowledged: true })
+      .send({
+        approverName: 'Dana Reyes',
+        expectedContentHash: 'a'.repeat(64),
+        expectedTotalCents: p.totalCents,
+        acknowledged: true,
+      })
       .expect(409);
     const approval = await agent
       .post(`/api/missions/${mission.id}/proposals/${p.id}/approve`)
       .set(H)
-      .send({ approverName: 'Dana Reyes', expectedContentHash: p.contentHash, expectedTotalCents: p.totalCents, acknowledged: true })
+      .send({
+        approverName: 'Dana Reyes',
+        expectedContentHash: p.contentHash,
+        expectedTotalCents: p.totalCents,
+        acknowledged: true,
+      })
       .expect(200);
 
-    const op = await agent.post(`/api/missions/${mission.id}/proposals/${p.id}/payments`).set(H).send({ approvalId: approval.body.id }).expect(201);
+    const op = await agent
+      .post(`/api/missions/${mission.id}/proposals/${p.id}/payments`)
+      .set(H)
+      .send({ approvalId: approval.body.id })
+      .expect(201);
     expect(op.body.status).toBe('APPROVAL_PENDING');
     expect(op.body).not.toHaveProperty('captureRequestId');
 
     // A forged order id is refused.
-    await agent.post(`/api/missions/${mission.id}/payments/${op.body.id}/capture`).set(H).send({ orderId: 'FORGED-ORDER' }).expect(409);
+    await agent
+      .post(`/api/missions/${mission.id}/payments/${op.body.id}/capture`)
+      .set(H)
+      .send({ orderId: 'FORGED-ORDER' })
+      .expect(409);
 
     h.gateway.payerApproves(op.body.providerOrderId);
-    const done = await agent.post(`/api/missions/${mission.id}/payments/${op.body.id}/capture`).set(H).send({ orderId: op.body.providerOrderId }).expect(200);
+    const done = await agent
+      .post(`/api/missions/${mission.id}/payments/${op.body.id}/capture`)
+      .set(H)
+      .send({ orderId: op.body.providerOrderId })
+      .expect(200);
     expect(done.body.status).toBe('COMPLETED');
 
     const detail = await agent.get(`/api/missions/${mission.id}`).expect(200);
@@ -101,8 +138,17 @@ describe('HTTP API', () => {
     const approval = await agent
       .post(`/api/missions/${mission.id}/proposals/${p.id}/approve`)
       .set(H)
-      .send({ approverName: 'Dana Reyes', expectedContentHash: p.contentHash, expectedTotalCents: p.totalCents, acknowledged: true });
-    const res = await agent.post(`/api/missions/${mission.id}/proposals/${p.id}/payments`).set(H).send({ approvalId: approval.body.id }).expect(503);
+      .send({
+        approverName: 'Dana Reyes',
+        expectedContentHash: p.contentHash,
+        expectedTotalCents: p.totalCents,
+        acknowledged: true,
+      });
+    const res = await agent
+      .post(`/api/missions/${mission.id}/proposals/${p.id}/payments`)
+      .set(H)
+      .send({ approvalId: approval.body.id })
+      .expect(503);
     expect(res.body.error.code).toBe('INTEGRATION_NOT_CONFIGURED');
   });
 

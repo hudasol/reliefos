@@ -24,18 +24,32 @@ export interface ApiErrorBody {
 export function errorHandler(log: { error: (o: object, m: string) => void }) {
   return (err: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof ZodError) {
-      return res.status(400).json({ error: { code: 'VALIDATION_FAILED', message: 'Request validation failed', details: err.issues.map((i) => ({ path: i.path.join('.'), message: i.message })) } } satisfies ApiErrorBody);
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'Request validation failed',
+          details: err.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+        },
+      } satisfies ApiErrorBody);
     }
     if (err instanceof DomainError) {
-      return res.status(STATUS[err.code]).json({ error: { code: err.code, message: err.message, details: err.details } } satisfies ApiErrorBody);
+      return res.status(STATUS[err.code]).json({
+        error: { code: err.code, message: err.message, details: err.details },
+      } satisfies ApiErrorBody);
     }
     if (err instanceof IllegalTransitionError) {
-      return res.status(409).json({ error: { code: 'ILLEGAL_STATE', message: err.message } } satisfies ApiErrorBody);
+      return res
+        .status(409)
+        .json({ error: { code: 'ILLEGAL_STATE', message: err.message } } satisfies ApiErrorBody);
     }
     if (err instanceof SyntaxError && 'body' in (err as object)) {
-      return res.status(400).json({ error: { code: 'VALIDATION_FAILED', message: 'Malformed JSON body' } } satisfies ApiErrorBody);
+      return res.status(400).json({
+        error: { code: 'VALIDATION_FAILED', message: 'Malformed JSON body' },
+      } satisfies ApiErrorBody);
     }
     log.error({ err, path: req.path, method: req.method }, 'unhandled error');
-    return res.status(500).json({ error: { code: 'INTERNAL', message: 'An unexpected error occurred. It has been logged.' } } satisfies ApiErrorBody);
+    return res.status(500).json({
+      error: { code: 'INTERNAL', message: 'An unexpected error occurred. It has been logged.' },
+    } satisfies ApiErrorBody);
   };
 }

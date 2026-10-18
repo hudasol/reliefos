@@ -31,7 +31,8 @@ export class Channel3Source implements ProductSource {
       });
       return page.data.map(normalizeChannel3Product);
     } catch (err) {
-      if (err instanceof Channel3TimeoutError) throw new CatalogError('Channel3 search timed out', true);
+      if (err instanceof Channel3TimeoutError)
+        throw new CatalogError('Channel3 search timed out', true);
       if (err instanceof Channel3Error) {
         const status = err.statusCode;
         const retryable = status === undefined || status === 429 || status >= 500;
@@ -52,7 +53,10 @@ export class Channel3Source implements ProductSource {
 
 export function normalizeChannel3Product(p: Channel3Api.Product): RawListing {
   const offers = (p.offers ?? []).filter(
-    (o) => o.price?.currency === 'USD' && o.availability === 'InStock' && (o.condition ?? 'new') === 'new',
+    (o) =>
+      o.price?.currency === 'USD' &&
+      o.availability === 'InStock' &&
+      (o.condition ?? 'new') === 'new',
   );
   const best = offers.reduce<Channel3Api.ProductOffer | null>(
     (acc, o) => (acc === null || o.price.price < acc.price.price ? o : acc),

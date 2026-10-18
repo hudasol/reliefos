@@ -2,18 +2,51 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { MissionInputSchema, type MissionInput } from '../../../shared/contracts';
 import type { MissionInterpretation } from '../../../shared/types';
-import { useCreateMission, useInterpret, useMission, useMissionInput, useUpdateMission } from '../api/hooks';
+import {
+  useCreateMission,
+  useInterpret,
+  useMission,
+  useMissionInput,
+  useUpdateMission,
+} from '../api/hooks';
 import { Badge, Button, Callout, errorText, LoadingBlock, Panel, useToast } from '../components/ui';
 import { humanize } from '../lib/format';
 
-const TIMEZONES = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu', 'America/Puerto_Rico', 'UTC'];
+const TIMEZONES = [
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Anchorage',
+  'Pacific/Honolulu',
+  'America/Puerto_Rico',
+  'UTC',
+];
 
-function F({ k, label, help, children, span, errors }: { k: keyof MissionInput; label: string; help?: string; children: React.ReactNode; span?: number; errors: Record<string, string> }) {
+function F({
+  k,
+  label,
+  help,
+  children,
+  span,
+  errors,
+}: {
+  k: keyof MissionInput;
+  label: string;
+  help?: string;
+  children: React.ReactNode;
+  span?: number;
+  errors: Record<string, string>;
+}) {
   return (
     <div className={'field' + (span ? ' span-' + span : '')}>
       <label htmlFor={'f-' + k}>{label}</label>
       {children}
-      {errors[k] ? <span className="err">{errors[k]}</span> : help ? <span className="help">{help}</span> : null}
+      {errors[k] ? (
+        <span className="err">{errors[k]}</span>
+      ) : help ? (
+        <span className="help">{help}</span>
+      ) : null}
     </div>
   );
 }
@@ -47,17 +80,22 @@ export function MissionFormPage({ edit }: { edit?: boolean }) {
   const interpret = useInterpret();
   const [form, setForm] = useState<MissionInput>(blank);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [interp, setInterp] = useState<(MissionInterpretation & { error: string | null }) | null>(null);
+  const [interp, setInterp] = useState<(MissionInterpretation & { error: string | null }) | null>(
+    null,
+  );
 
   useEffect(() => {
     if (edit && existing.data) setForm(existing.data.input);
   }, [edit, existing.data]);
 
-  const set = <K extends keyof MissionInput>(k: K, v: MissionInput[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const numField = (k: keyof MissionInput) => (e: React.ChangeEvent<HTMLInputElement>) => set(k, (e.target.value === '' ? NaN : Number(e.target.value)) as never);
+  const set = <K extends keyof MissionInput>(k: K, v: MissionInput[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+  const numField = (k: keyof MissionInput) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    set(k, (e.target.value === '' ? NaN : Number(e.target.value)) as never);
 
   const applyInterpretation = (r: MissionInterpretation) => {
-    const get = (f: string) => r.fields.find((x) => x.field === f && x.status === 'extracted')?.value;
+    const get = (f: string) =>
+      r.fields.find((x) => x.field === f && x.status === 'extracted')?.value;
     setForm((f) => ({
       ...f,
       organization: (get('organization') as string) ?? f.organization,
@@ -68,7 +106,9 @@ export function MissionFormPage({ edit }: { edit?: boolean }) {
       destination: (get('destination') as string) ?? f.destination,
       householdSize: (get('householdSize') as number) ?? f.householdSize,
       coverageDays: (get('coverageDays') as number) ?? f.coverageDays,
-      title: f.title || ((get('destination') as string) ? `Relief supply — ${get('destination')}` : f.title),
+      title:
+        f.title ||
+        ((get('destination') as string) ? `Relief supply — ${get('destination')}` : f.title),
     }));
   };
 
@@ -92,11 +132,19 @@ export function MissionFormPage({ edit }: { edit?: boolean }) {
         },
       );
     } else {
-      create.mutate(parsed.data, { onSuccess: (m) => navigate(`/missions/${m.id}`), onError: (err) => toast('danger', errorText(err)) });
+      create.mutate(parsed.data, {
+        onSuccess: (m) => navigate(`/missions/${m.id}`),
+        onError: (err) => toast('danger', errorText(err)),
+      });
     }
   };
 
-  if (edit && (existing.isLoading || detail.isLoading)) return <div className="content"><LoadingBlock rows={8} /></div>;
+  if (edit && (existing.isLoading || detail.isLoading))
+    return (
+      <div className="content">
+        <LoadingBlock rows={8} />
+      </div>
+    );
   const hasApproval = edit && detail.data?.approvals.some((a) => a.status === 'ACTIVE');
   return (
     <div className="content">
@@ -110,7 +158,11 @@ export function MissionFormPage({ edit }: { edit?: boolean }) {
           </p>
         </div>
       </div>
-      {hasApproval && <Callout tone="warn" title="An approval is active">Saving changes will invalidate it. The coordinator will need to review and approve again.</Callout>}
+      {hasApproval && (
+        <Callout tone="warn" title="An approval is active">
+          Saving changes will invalidate it. The coordinator will need to review and approve again.
+        </Callout>
+      )}
 
       <form onSubmit={submit} className="stack" noValidate>
         <Panel title="Request" sub="Natural-language mission brief">
@@ -141,13 +193,21 @@ export function MissionFormPage({ edit }: { edit?: boolean }) {
               >
                 Interpret request
               </Button>
-              <span className="small muted">Extracted values are pre-filled below for your confirmation.</span>
+              <span className="small muted">
+                Extracted values are pre-filled below for your confirmation.
+              </span>
             </div>
             {interp && (
               <div className="stack">
                 <div className="row">
-                  <Badge tone={interp.mode === 'claude' ? 'accent' : 'neutral'}>{interp.mode === 'claude' ? 'Claude interpretation' : 'Deterministic interpreter'}</Badge>
-                  {interp.error && <span className="small muted">Model output was not used: {interp.error}</span>}
+                  <Badge tone={interp.mode === 'claude' ? 'accent' : 'neutral'}>
+                    {interp.mode === 'claude'
+                      ? 'Claude interpretation'
+                      : 'Deterministic interpreter'}
+                  </Badge>
+                  {interp.error && (
+                    <span className="small muted">Model output was not used: {interp.error}</span>
+                  )}
                 </div>
                 <table className="tbl">
                   <thead>
@@ -164,9 +224,25 @@ export function MissionFormPage({ edit }: { edit?: boolean }) {
                         <td>{humanize(f.field.replace(/([A-Z])/g, '_$1'))}</td>
                         <td className="strong">{f.value ?? '—'}</td>
                         <td>
-                          <Badge tone={f.status === 'extracted' ? 'ok' : f.status === 'defaulted' ? 'neutral' : 'warn'}>{f.status}</Badge>
+                          <Badge
+                            tone={
+                              f.status === 'extracted'
+                                ? 'ok'
+                                : f.status === 'defaulted'
+                                  ? 'neutral'
+                                  : 'warn'
+                            }
+                          >
+                            {f.status}
+                          </Badge>
                         </td>
-                        <td>{f.evidence ? <span className="quote">“{f.evidence}”</span> : <span className="muted">—</span>}</td>
+                        <td>
+                          {f.evidence ? (
+                            <span className="quote">“{f.evidence}”</span>
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -188,46 +264,144 @@ export function MissionFormPage({ edit }: { edit?: boolean }) {
         <Panel title="Authoritative mission terms" sub="These values bind the policy gate">
           <div className="form-grid">
             <F errors={errors} k="title" label="Mission title" span={2}>
-              <input id="f-title" className="input" value={form.title} onChange={(e) => set('title', e.target.value)} aria-invalid={!!errors.title} />
+              <input
+                id="f-title"
+                className="input"
+                value={form.title}
+                onChange={(e) => set('title', e.target.value)}
+                aria-invalid={!!errors.title}
+              />
             </F>
             <F errors={errors} k="organization" label="Organization" span={2}>
-              <input id="f-organization" className="input" value={form.organization} onChange={(e) => set('organization', e.target.value)} aria-invalid={!!errors.organization} />
+              <input
+                id="f-organization"
+                className="input"
+                value={form.organization}
+                onChange={(e) => set('organization', e.target.value)}
+                aria-invalid={!!errors.organization}
+              />
             </F>
-            <F errors={errors} k="budgetUsd" label="Authorised budget (USD)" help="Hard cap including shipping">
-              <input id="f-budgetUsd" className="input" type="number" min={1} step="0.01" value={Number.isNaN(form.budgetUsd) ? '' : form.budgetUsd} onChange={numField('budgetUsd')} aria-invalid={!!errors.budgetUsd} />
+            <F
+              errors={errors}
+              k="budgetUsd"
+              label="Authorised budget (USD)"
+              help="Hard cap including shipping"
+            >
+              <input
+                id="f-budgetUsd"
+                className="input"
+                type="number"
+                min={1}
+                step="0.01"
+                value={Number.isNaN(form.budgetUsd) ? '' : form.budgetUsd}
+                onChange={numField('budgetUsd')}
+                aria-invalid={!!errors.budgetUsd}
+              />
             </F>
             <F errors={errors} k="population" label="People to support">
-              <input id="f-population" className="input" type="number" min={1} value={Number.isNaN(form.population) ? '' : form.population} onChange={numField('population')} aria-invalid={!!errors.population} />
+              <input
+                id="f-population"
+                className="input"
+                type="number"
+                min={1}
+                value={Number.isNaN(form.population) ? '' : form.population}
+                onChange={numField('population')}
+                aria-invalid={!!errors.population}
+              />
             </F>
             <F errors={errors} k="infants" label="Infants" help="Drives baby-supply quantities">
-              <input id="f-infants" className="input" type="number" min={0} value={Number.isNaN(form.infants) ? '' : form.infants} onChange={numField('infants')} aria-invalid={!!errors.infants} />
+              <input
+                id="f-infants"
+                className="input"
+                type="number"
+                min={0}
+                value={Number.isNaN(form.infants) ? '' : form.infants}
+                onChange={numField('infants')}
+                aria-invalid={!!errors.infants}
+              />
             </F>
-            <F errors={errors} k="householdSize" label="People per household" help="Hygiene kits: 1 per household">
-              <input id="f-householdSize" className="input" type="number" min={1} value={Number.isNaN(form.householdSize) ? '' : form.householdSize} onChange={numField('householdSize')} />
+            <F
+              errors={errors}
+              k="householdSize"
+              label="People per household"
+              help="Hygiene kits: 1 per household"
+            >
+              <input
+                id="f-householdSize"
+                className="input"
+                type="number"
+                min={1}
+                value={Number.isNaN(form.householdSize) ? '' : form.householdSize}
+                onChange={numField('householdSize')}
+              />
             </F>
             <F errors={errors} k="coverageDays" label="Supply coverage (days)">
-              <input id="f-coverageDays" className="input" type="number" min={1} max={14} value={Number.isNaN(form.coverageDays) ? '' : form.coverageDays} onChange={numField('coverageDays')} />
+              <input
+                id="f-coverageDays"
+                className="input"
+                type="number"
+                min={1}
+                max={14}
+                value={Number.isNaN(form.coverageDays) ? '' : form.coverageDays}
+                onChange={numField('coverageDays')}
+              />
             </F>
             <F errors={errors} k="destination" label="Delivery destination" span={2}>
-              <input id="f-destination" className="input" value={form.destination} onChange={(e) => set('destination', e.target.value)} aria-invalid={!!errors.destination} />
+              <input
+                id="f-destination"
+                className="input"
+                value={form.destination}
+                onChange={(e) => set('destination', e.target.value)}
+                aria-invalid={!!errors.destination}
+              />
             </F>
             <F errors={errors} k="plannerMode" label="Planner">
-              <select id="f-plannerMode" className="input" value={form.plannerMode} onChange={(e) => set('plannerMode', e.target.value as MissionInput['plannerMode'])}>
+              <select
+                id="f-plannerMode"
+                className="input"
+                value={form.plannerMode}
+                onChange={(e) => set('plannerMode', e.target.value as MissionInput['plannerMode'])}
+              >
                 <option value="claude">Claude (falls back if unavailable)</option>
                 <option value="deterministic">Deterministic only</option>
               </select>
             </F>
             <F errors={errors} k="date" label="Mission date">
-              <input id="f-date" className="input" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} aria-invalid={!!errors.date} />
+              <input
+                id="f-date"
+                className="input"
+                type="date"
+                value={form.date}
+                onChange={(e) => set('date', e.target.value)}
+                aria-invalid={!!errors.date}
+              />
             </F>
             <F errors={errors} k="startTime" label="Planning window opens">
-              <input id="f-startTime" className="input" type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} />
+              <input
+                id="f-startTime"
+                className="input"
+                type="time"
+                value={form.startTime}
+                onChange={(e) => set('startTime', e.target.value)}
+              />
             </F>
             <F errors={errors} k="deadlineTime" label="Hard delivery deadline">
-              <input id="f-deadlineTime" className="input" type="time" value={form.deadlineTime} onChange={(e) => set('deadlineTime', e.target.value)} aria-invalid={!!errors.deadlineTime} />
+              <input
+                id="f-deadlineTime"
+                className="input"
+                type="time"
+                value={form.deadlineTime}
+                onChange={(e) => set('deadlineTime', e.target.value)}
+                aria-invalid={!!errors.deadlineTime}
+              />
             </F>
             <F errors={errors} k="timezone" label="Time zone">
-              <select id="f-timezone" className="input" value={form.timezone} onChange={(e) => set('timezone', e.target.value)}>
+              <select
+                id="f-timezone"
+                className="input"
+                value={form.timezone}
+                onChange={(e) => set('timezone', e.target.value)}
+              >
                 {[...new Set([form.timezone, ...TIMEZONES])].map((tz) => (
                   <option key={tz} value={tz}>
                     {tz}
@@ -238,7 +412,12 @@ export function MissionFormPage({ edit }: { edit?: boolean }) {
           </div>
         </Panel>
         <div className="row">
-          <Button variant="primary" size="lg" type="submit" loading={create.isPending || update.isPending}>
+          <Button
+            variant="primary"
+            size="lg"
+            type="submit"
+            loading={create.isPending || update.isPending}
+          >
             {edit ? 'Save new mission version' : 'Create mission'}
           </Button>
           <Button variant="ghost" onClick={() => navigate(-1)}>

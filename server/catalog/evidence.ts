@@ -1,4 +1,9 @@
-import type { PackInfo, RequirementCategory, RequirementSpec, SpecCheck } from '../../shared/types.js';
+import type {
+  PackInfo,
+  RequirementCategory,
+  RequirementSpec,
+  SpecCheck,
+} from '../../shared/types.js';
 
 // Deterministic evidence extraction from product text. Every extracted value carries the exact text
 // it came from. When a value cannot be established it is `null` — never assumed to satisfy a need.
@@ -47,7 +52,11 @@ function parseVolumeLiters(text: string): { liters: number; evidence: string } |
 }
 
 /** How many requirement units one purchasable listing covers, with the text that proves it. */
-export function parsePack(category: RequirementCategory, title: string, description: string | null): PackInfo {
+export function parsePack(
+  category: RequirementCategory,
+  title: string,
+  description: string | null,
+): PackInfo {
   const sources: ['parsed-title' | 'parsed-description', string][] = [['parsed-title', title]];
   if (description) sources.push(['parsed-description', description]);
 
@@ -60,11 +69,15 @@ export function parsePack(category: RequirementCategory, title: string, descript
       return {
         unitsPerPack: units,
         basis,
-        evidence: count ? `${count.evidence}; ${vol.evidence}` : `${vol.evidence} (single unit; no pack count stated)`,
+        evidence: count
+          ? `${count.evidence}; ${vol.evidence}`
+          : `${vol.evidence} (single unit; no pack count stated)`,
       };
     }
     if (category === 'baby') {
-      const m = /\b(\d{2,4})\s*(?:count|ct|diapers|pcs)\b/i.exec(text) ?? /\b(?:pack|box|case)\s+of\s+(\d{2,4})\b/i.exec(text);
+      const m =
+        /\b(\d{2,4})\s*(?:count|ct|diapers|pcs)\b/i.exec(text) ??
+        /\b(?:pack|box|case)\s+of\s+(\d{2,4})\b/i.exec(text);
       if (m?.[1]) return { unitsPerPack: Number(m[1]), basis, evidence: m[0] };
       continue;
     }
@@ -81,12 +94,16 @@ export function parsePack(category: RequirementCategory, title: string, descript
     };
     const re = singular[category];
     const m = re ? re.exec(title) : null;
-    if (m) return { unitsPerPack: 1, basis: 'parsed-title', evidence: `${m[0].trim()} (single item)` };
+    if (m)
+      return { unitsPerPack: 1, basis: 'parsed-title', evidence: `${m[0].trim()} (single item)` };
   }
   return { unitsPerPack: null, basis: 'unknown', evidence: null };
 }
 
-export function parseAttributes(title: string, description: string | null): Record<string, number | string> {
+export function parseAttributes(
+  title: string,
+  description: string | null,
+): Record<string, number | string> {
   const attrs: Record<string, number | string> = {};
   const text = `${title} ${description ?? ''}`;
   const mah = /(\d{1,3}(?:,\d{3})+|\d{4,6})\s*mAh\b/i.exec(text);
@@ -119,8 +136,10 @@ export function checkSpec(
       reasons.push(`${n.attribute} not stated in listing (required${n.min ? ` ≥ ${n.min}` : ''})`);
       continue;
     }
-    if (n.min !== undefined && value < n.min) reasons.push(`${n.attribute} ${value} below minimum ${n.min}`);
-    if (n.max !== undefined && value > n.max) reasons.push(`${n.attribute} ${value} above maximum ${n.max}`);
+    if (n.min !== undefined && value < n.min)
+      reasons.push(`${n.attribute} ${value} below minimum ${n.min}`);
+    if (n.max !== undefined && value > n.max)
+      reasons.push(`${n.attribute} ${value} above maximum ${n.max}`);
   }
   return { passed: reasons.length === 0, reasons };
 }

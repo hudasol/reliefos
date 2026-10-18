@@ -12,7 +12,14 @@ function ProductRow({ c, unit, tz }: { c: CandidateView; unit: string; tz: strin
   return (
     <div className={`product${c.eligible ? '' : ' excluded'}`}>
       {c.imageUrl?.startsWith('https://') ? (
-        <img className="thumb" src={c.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ objectFit: 'contain', background: '#fff' }} />
+        <img
+          className="thumb"
+          src={c.imageUrl}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          style={{ objectFit: 'contain', background: '#fff' }}
+        />
       ) : (
         <div className="thumb" aria-hidden="true">
           no image
@@ -24,7 +31,11 @@ function ProductRow({ c, unit, tz }: { c: CandidateView; unit: string; tz: strin
           <ProvenanceTag p={c.provenance} />
           {c.selectedInActive && <Badge tone="accent">In current plan</Badge>}
           {c.quarantined && <Badge tone="danger">Quarantined</Badge>}
-          {c.suitability && <Badge tone="neutral" plain>Agent rank score {c.suitability.score}</Badge>}
+          {c.suitability && (
+            <Badge tone="neutral" plain>
+              Agent rank score {c.suitability.score}
+            </Badge>
+          )}
         </div>
         <dl className="kv">
           <dt>Merchant</dt>
@@ -34,13 +45,18 @@ function ProductRow({ c, unit, tz }: { c: CandidateView; unit: string; tz: strin
           </dd>
           <dt>Listed price</dt>
           <dd>
-            {usd(c.priceCents)} <span className="muted">· source {c.provenance} · retrieved {dateTime(c.retrievedAt, tz)}</span>
+            {usd(c.priceCents)}{' '}
+            <span className="muted">
+              · source {c.provenance} · retrieved {dateTime(c.retrievedAt, tz)}
+            </span>
           </dd>
           <dt>Pack size</dt>
           <dd>
             {c.pack.unitsPerPack ? (
               <>
-                {c.pack.unitsPerPack} {unit} per pack · evidence <span className="quote">{c.pack.evidence}</span> <span className="muted">({c.pack.basis})</span>
+                {c.pack.unitsPerPack} {unit} per pack · evidence{' '}
+                <span className="quote">{c.pack.evidence}</span>{' '}
+                <span className="muted">({c.pack.basis})</span>
               </>
             ) : (
               <span style={{ color: 'var(--danger)' }}>Not established from listing text</span>
@@ -58,8 +74,13 @@ function ProductRow({ c, unit, tz }: { c: CandidateView; unit: string; tz: strin
             <>
               <dt>Supplier commitment</dt>
               <dd>
-                <SimTag /> {c.quote.stockPacks} packs in stock · ETA {clock(c.quote.eta, tz)} · courier {usd(c.quote.shippingBaseCents)} + {usd(c.quote.shippingPerPackCents)}/pack
-                {c.quote.reason.startsWith('SIMULATED market event') && <div className="small" style={{ color: 'var(--warn)' }}>{c.quote.reason}</div>}
+                <SimTag /> {c.quote.stockPacks} packs in stock · ETA {clock(c.quote.eta, tz)} ·
+                courier {usd(c.quote.shippingBaseCents)} + {usd(c.quote.shippingPerPackCents)}/pack
+                {c.quote.reason.startsWith('SIMULATED market event') && (
+                  <div className="small" style={{ color: 'var(--warn)' }}>
+                    {c.quote.reason}
+                  </div>
+                )}
               </dd>
             </>
           )}
@@ -69,7 +90,8 @@ function ProductRow({ c, unit, tz }: { c: CandidateView; unit: string; tz: strin
             <ul>
               {c.contentFlags.map((f, i) => (
                 <li key={i} className="small">
-                  <span className="mono">{f.rule}</span> in {f.field}: <span className="quote">{f.excerpt}</span>
+                  <span className="mono">{f.rule}</span> in {f.field}:{' '}
+                  <span className="quote">{f.excerpt}</span>
                 </li>
               ))}
             </ul>
@@ -81,12 +103,19 @@ function ProductRow({ c, unit, tz }: { c: CandidateView; unit: string; tz: strin
             {c.exclusionReasons.join(' · ')}
           </div>
         )}
-        {c.suitability?.notes && c.suitability.score === 100 && <div className="small text-2">Agent rationale: {c.suitability.notes}</div>}
+        {c.suitability?.notes && c.suitability.score === 100 && (
+          <div className="small text-2">Agent rationale: {c.suitability.notes}</div>
+        )}
       </div>
       <div className="stack" style={{ alignItems: 'flex-end' }}>
         <Badge tone={c.eligible ? 'ok' : 'neutral'}>{c.eligible ? 'Eligible' : 'Excluded'}</Badge>
         {c.buyUrl && (
-          <a href={c.buyUrl} target="_blank" rel="noopener noreferrer nofollow" className="small row">
+          <a
+            href={c.buyUrl}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="small row"
+          >
             Listing <IconExternal width={12} height={12} />
           </a>
         )}
@@ -106,12 +135,22 @@ export function EvidencePage() {
       <div className="page-head">
         <div>
           <h1>Product evidence</h1>
-          <p className="lede">Every listing retrieved for this mission, with the evidence behind each decision. Product suitability comes from the catalog; stock and delivery are simulated supplier commitments and are labelled as such.</p>
+          <p className="lede">
+            Every listing retrieved for this mission, with the evidence behind each decision.
+            Product suitability comes from the catalog; stock and delivery are simulated supplier
+            commitments and are labelled as such.
+          </p>
         </div>
       </div>
       <div className="tabs" role="tablist" aria-label="Filter listings">
         {(['all', 'eligible', 'excluded', 'flagged'] as Filter[]).map((f) => (
-          <button key={f} role="tab" className="tab" aria-selected={filter === f} onClick={() => setFilter(f)}>
+          <button
+            key={f}
+            role="tab"
+            className="tab"
+            aria-selected={filter === f}
+            onClick={() => setFilter(f)}
+          >
             {f === 'flagged' ? 'Injection flags' : f[0]!.toUpperCase() + f.slice(1)}
           </button>
         ))}
@@ -120,13 +159,27 @@ export function EvidencePage() {
         {(d) => (
           <QueryView q={cq} rows={8}>
             {(cands) => {
-              if (cands.length === 0) return <Panel title="No listings yet"><span className="muted">Plan the mission to retrieve products.</span></Panel>;
-              const visible = cands.filter((c) => (filter === 'eligible' ? c.eligible : filter === 'excluded' ? !c.eligible : filter === 'flagged' ? c.contentFlags.length > 0 : true));
+              if (cands.length === 0)
+                return (
+                  <Panel title="No listings yet">
+                    <span className="muted">Plan the mission to retrieve products.</span>
+                  </Panel>
+                );
+              const visible = cands.filter((c) =>
+                filter === 'eligible'
+                  ? c.eligible
+                  : filter === 'excluded'
+                    ? !c.eligible
+                    : filter === 'flagged'
+                      ? c.contentFlags.length > 0
+                      : true,
+              );
               return (
                 <>
                   {d.mission.catalogSource !== 'channel3' && (
                     <Callout tone="warn" title="Fixture catalog in use">
-                      Channel3 is not configured or was unavailable for this mission, so listings come from a labelled offline fixture catalog of fictional .example merchants.
+                      Channel3 is not configured or was unavailable for this mission, so listings
+                      come from a labelled offline fixture catalog of fictional .example merchants.
                     </Callout>
                   )}
                   {d.requirements.map((r) => {
@@ -134,7 +187,12 @@ export function EvidencePage() {
                     if (list.length === 0) return null;
                     const all = cands.filter((c) => c.requirementId === r.id);
                     return (
-                      <Panel key={r.id} title={r.label} sub={`${all.filter((c) => c.eligible).length} eligible of ${all.length} · need ${r.quantity} ${r.unit} · query “${r.searchQuery}”`} flush>
+                      <Panel
+                        key={r.id}
+                        title={r.label}
+                        sub={`${all.filter((c) => c.eligible).length} eligible of ${all.length} · need ${r.quantity} ${r.unit} · query “${r.searchQuery}”`}
+                        flush
+                      >
                         {list.map((c) => (
                           <ProductRow key={c.id} c={c} unit={r.unit} tz={d.mission.timezone} />
                         ))}

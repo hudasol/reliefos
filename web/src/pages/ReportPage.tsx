@@ -11,24 +11,38 @@ export function ReportPage() {
       <QueryView q={q} rows={10}>
         {(r) => {
           const purchased = new Map<string, number>();
-          for (const p of r.executedProposals) for (const l of p.lines) purchased.set(l.requirementId, (purchased.get(l.requirementId) ?? 0) + l.unitsCovered);
+          for (const p of r.executedProposals)
+            for (const l of p.lines)
+              purchased.set(
+                l.requirementId,
+                (purchased.get(l.requirementId) ?? 0) + l.unitsCovered,
+              );
           const spent = r.verifiedPayments.reduce((a, p) => a + p.amountCents, 0);
           return (
             <>
               <div className="page-head">
                 <div>
                   <h1>Mission report</h1>
-                  <p className="lede">Actual outcomes only: purchases count when PayPal has verified the capture. Simulated inputs are listed at the end.</p>
+                  <p className="lede">
+                    Actual outcomes only: purchases count when PayPal has verified the capture.
+                    Simulated inputs are listed at the end.
+                  </p>
                 </div>
                 <span style={{ flex: 1 }} />
                 <Button onClick={() => window.print()}>Print / save PDF</Button>
               </div>
 
-              <Panel title={r.mission.title} sub={`${r.mission.organization} · ${r.mission.destination} · deadline ${clock(r.mission.deadline, r.mission.timezone)}`} actions={<StatusBadge status={r.mission.status} tones={MISSION_TONE} />}>
+              <Panel
+                title={r.mission.title}
+                sub={`${r.mission.organization} · ${r.mission.destination} · deadline ${clock(r.mission.deadline, r.mission.timezone)}`}
+                actions={<StatusBadge status={r.mission.status} tones={MISSION_TONE} />}
+              >
                 <div className="grid cols-4">
                   <div>
                     <div className="muted small">Verified spend</div>
-                    <div className="strong" style={{ fontSize: 20 }}>{usd(spent)}</div>
+                    <div className="strong" style={{ fontSize: 20 }}>
+                      {usd(spent)}
+                    </div>
                     <div className="small text-2">of {usd(r.mission.budgetCents)} authority</div>
                   </div>
                   <div>
@@ -36,22 +50,32 @@ export function ReportPage() {
                     <div className="strong" style={{ fontSize: 20 }}>
                       {r.summary.requirementsCovered}/{r.summary.requirementsTotal}
                     </div>
-                    <div className="small text-2">{r.summary.openGaps.length} with remaining gaps</div>
+                    <div className="small text-2">
+                      {r.summary.openGaps.length} with remaining gaps
+                    </div>
                   </div>
                   <div>
                     <div className="muted small">Proposals stopped by DEADMAN</div>
-                    <div className="strong" style={{ fontSize: 20 }}>{r.rejectedProposals.length}</div>
+                    <div className="strong" style={{ fontSize: 20 }}>
+                      {r.rejectedProposals.length}
+                    </div>
                     <div className="small text-2">before any payment</div>
                   </div>
                   <div>
                     <div className="muted small">Audit integrity</div>
-                    <div className="strong" style={{ fontSize: 20 }}>{r.audit.chainIntact ? 'Intact' : 'Broken'}</div>
+                    <div className="strong" style={{ fontSize: 20 }}>
+                      {r.audit.chainIntact ? 'Intact' : 'Broken'}
+                    </div>
                     <div className="small text-2">{r.audit.chainEvents} hash-chained events</div>
                   </div>
                 </div>
               </Panel>
 
-              {r.unresolvedPayments.length > 0 && <Callout tone="warn" title={`${r.unresolvedPayments.length} payment(s) unresolved`}>These are not counted as spend until PayPal confirms them.</Callout>}
+              {r.unresolvedPayments.length > 0 && (
+                <Callout tone="warn" title={`${r.unresolvedPayments.length} payment(s) unresolved`}>
+                  These are not counted as spend until PayPal confirms them.
+                </Callout>
+              )}
 
               <div className="grid cols-2">
                 <Panel title="Outcome by requirement" flush>
@@ -74,7 +98,15 @@ export function ReportPage() {
                               {num(q.quantity)} {q.unit}
                             </td>
                             <td className="num">{num(got)}</td>
-                            <td className="num">{got >= q.quantity ? <Badge tone="ok">met</Badge> : <span style={{ color: 'var(--danger)' }}>{num(q.quantity - got)}</span>}</td>
+                            <td className="num">
+                              {got >= q.quantity ? (
+                                <Badge tone="ok">met</Badge>
+                              ) : (
+                                <span style={{ color: 'var(--danger)' }}>
+                                  {num(q.quantity - got)}
+                                </span>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
@@ -132,7 +164,11 @@ export function ReportPage() {
                           <td>
                             <Badge tone="danger">{p.status.toLowerCase()}</Badge>
                           </td>
-                          <td className="small">{p.violations.length ? p.violations.map((v) => v.message).join(' · ') : 'Superseded or withdrawn'}</td>
+                          <td className="small">
+                            {p.violations.length
+                              ? p.violations.map((v) => v.message).join(' · ')
+                              : 'Superseded or withdrawn'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -143,7 +179,9 @@ export function ReportPage() {
               <div className="grid cols-2">
                 <Panel title="Deliveries">
                   {r.confirmedDeliveries.length === 0 ? (
-                    <span className="muted">No deliveries confirmed (confirmed only after verified payment).</span>
+                    <span className="muted">
+                      No deliveries confirmed (confirmed only after verified payment).
+                    </span>
                   ) : (
                     <div className="stack small">
                       {r.confirmedDeliveries.map((t) => (
@@ -155,7 +193,9 @@ export function ReportPage() {
                           </span>
                         </div>
                       ))}
-                      <div className="muted">Delivery times are simulated supplier commitments.</div>
+                      <div className="muted">
+                        Delivery times are simulated supplier commitments.
+                      </div>
                     </div>
                   )}
                 </Panel>
@@ -163,16 +203,22 @@ export function ReportPage() {
                   {r.security ? (
                     <div className="stack small">
                       <Badge tone={r.security.failed === 0 ? 'ok' : 'danger'}>
-                        {r.security.passed}/{r.security.results.length} adversarial scenarios enforced
+                        {r.security.passed}/{r.security.results.length} adversarial scenarios
+                        enforced
                       </Badge>
                       {r.security.results.map((s) => (
                         <div key={s.scenarioId} className="row">
-                          <span style={{ color: s.passed ? 'var(--ok)' : 'var(--danger)' }}>{s.passed ? '✓' : '✗'}</span> {s.title}
+                          <span style={{ color: s.passed ? 'var(--ok)' : 'var(--danger)' }}>
+                            {s.passed ? '✓' : '✗'}
+                          </span>{' '}
+                          {s.title}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <span className="muted">The DEADMAN suite has not been run for this mission.</span>
+                    <span className="muted">
+                      The DEADMAN suite has not been run for this mission.
+                    </span>
                   )}
                 </Panel>
               </div>
@@ -186,7 +232,9 @@ export function ReportPage() {
                         {k}: {v}
                       </div>
                     ))}
-                    <div className="strong" style={{ marginTop: 8 }}>Simulated in this build</div>
+                    <div className="strong" style={{ marginTop: 8 }}>
+                      Simulated in this build
+                    </div>
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                       {r.simulated.map((s) => (
                         <li key={s}>{s}</li>
@@ -197,7 +245,8 @@ export function ReportPage() {
                     <div className="strong">Planning assumptions</div>
                     {Object.entries(r.assumptions).map(([k, a]) => (
                       <div key={k}>
-                        <span className="mono">{k}</span> = {a.value} — <span className="muted">{a.source}</span>
+                        <span className="mono">{k}</span> = {a.value} —{' '}
+                        <span className="muted">{a.source}</span>
                       </div>
                     ))}
                   </div>

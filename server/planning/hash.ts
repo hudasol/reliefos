@@ -16,7 +16,13 @@ export interface MaterialTerms {
   missionId: string;
   missionVersion: number;
   currency: string;
-  lines: { requirementId: string; candidateId: string; quoteId: string; quantityPacks: number; unitPriceCents: number }[];
+  lines: {
+    requirementId: string;
+    candidateId: string;
+    quoteId: string;
+    quantityPacks: number;
+    unitPriceCents: number;
+  }[];
   shipping: { merchantDomain: string; cents: number }[];
   subtotalCents: number;
   shippingCents: number;
@@ -32,7 +38,9 @@ export function materialTermsHash(t: MaterialTerms): string {
   return sha256(
     canonicalJson({
       ...t,
-      lines: [...t.lines].sort((a, b) => (a.candidateId + a.quoteId).localeCompare(b.candidateId + b.quoteId)),
+      lines: [...t.lines].sort((a, b) =>
+        (a.candidateId + a.quoteId).localeCompare(b.candidateId + b.quoteId),
+      ),
     }),
   );
 }

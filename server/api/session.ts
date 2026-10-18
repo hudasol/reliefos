@@ -43,7 +43,8 @@ declare module 'express-serve-static-core' {
 export function requireWorkspace(secret: string) {
   return (req: Request, _res: Response, next: NextFunction) => {
     const id = verify(readCookie(req, SESSION_COOKIE), secret);
-    if (!id) return next(new DomainError('UNAUTHORIZED', 'No workspace session; reload the application'));
+    if (!id)
+      return next(new DomainError('UNAUTHORIZED', 'No workspace session; reload the application'));
     req.workspaceId = id;
     next();
   };
@@ -55,6 +56,7 @@ export function requireWorkspace(secret: string) {
  */
 export function requireCsrfHeader(req: Request, _res: Response, next: NextFunction) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-  if (req.get('x-reliefos-request') !== '1') return next(new DomainError('UNAUTHORIZED', 'Missing request header'));
+  if (req.get('x-reliefos-request') !== '1')
+    return next(new DomainError('UNAUTHORIZED', 'Missing request header'));
   next();
 }

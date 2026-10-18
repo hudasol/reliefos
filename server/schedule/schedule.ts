@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import type { DeliveryTask, DeliveryTaskStatus, FulfillmentQuote, Proposal } from '../../shared/types.js';
+import type {
+  DeliveryTask,
+  DeliveryTaskStatus,
+  FulfillmentQuote,
+  Proposal,
+} from '../../shared/types.js';
 import { INTAKE_BUFFER_MINUTES } from '../planning/optimizer.js';
 import { AT_RISK_MINUTES } from '../policy/engine.js';
 
@@ -38,12 +43,21 @@ export function buildSchedule(input: {
   const deliveryIds: string[] = [];
   let latestArrival = input.windowStart;
 
-  for (const [merchant, lines] of [...byMerchant.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-    const quotes = lines.map((l) => input.currentQuotes.get(l.candidateId)).filter((q): q is FulfillmentQuote => !!q);
+  for (const [merchant, lines] of [...byMerchant.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    const quotes = lines
+      .map((l) => input.currentQuotes.get(l.candidateId))
+      .filter((q): q is FulfillmentQuote => !!q);
     const start = quotes.length
       ? new Date(Math.min(...quotes.map((q) => new Date(q.dispatchAt).getTime())))
       : new Date(Math.min(...lines.map((l) => new Date(l.eta).getTime())) - 120 * 60_000);
-    const end = new Date(Math.max(...quotes.map((q) => new Date(q.eta).getTime()), ...lines.map((l) => new Date(l.eta).getTime())));
+    const end = new Date(
+      Math.max(
+        ...quotes.map((q) => new Date(q.eta).getTime()),
+        ...lines.map((l) => new Date(l.eta).getTime()),
+      ),
+    );
     if (end > latestArrival) latestArrival = end;
     const status = classifyArrival(end, deadline);
     const id = randomUUID();
@@ -54,7 +68,10 @@ export function buildSchedule(input: {
       proposalId: proposal.id,
       proposalVersion: proposal.version,
       kind: 'delivery',
-      label: `${lines.length} line${lines.length > 1 ? 's' : ''} · ${lines.map((l) => l.title.split(',')[0]).join(' / ').slice(0, 80)}`,
+      label: `${lines.length} line${lines.length > 1 ? 's' : ''} · ${lines
+        .map((l) => l.title.split(',')[0])
+        .join(' / ')
+        .slice(0, 80)}`,
       resource: `Supplier · ${merchant}`,
       startAt: start.toISOString(),
       endAt: end.toISOString(),

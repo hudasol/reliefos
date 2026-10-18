@@ -1,10 +1,26 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { Provenance } from '../../../shared/types';
 import { ApiError } from '../api/client';
 import { humanize, type Tone } from '../lib/format';
 import { IconAlert, IconInfo, IconCheck, IconX } from './icons';
 
-export function Badge({ tone = 'neutral', children, plain }: { tone?: Tone; children: ReactNode; plain?: boolean }) {
+export function Badge({
+  tone = 'neutral',
+  children,
+  plain,
+}: {
+  tone?: Tone;
+  children: ReactNode;
+  plain?: boolean;
+}) {
   return <span className={`badge ${tone}${plain ? ' plain' : ''}`}>{children}</span>;
 }
 
@@ -13,9 +29,21 @@ export function StatusBadge({ status, tones }: { status: string; tones: Record<s
 }
 
 const PROVENANCE: Record<Provenance, { cls: string; label: string; title: string }> = {
-  channel3: { cls: 'live', label: 'Channel3', title: 'Live product data returned by the Channel3 API' },
-  fixture: { cls: 'fixture', label: 'Fixture', title: 'Offline fixture listing (fictional .example merchant); not live market data' },
-  'simulated-adversarial': { cls: 'adv', label: 'Adversarial sim', title: 'Simulated adversarial listing injected by a drill' },
+  channel3: {
+    cls: 'live',
+    label: 'Channel3',
+    title: 'Live product data returned by the Channel3 API',
+  },
+  fixture: {
+    cls: 'fixture',
+    label: 'Fixture',
+    title: 'Offline fixture listing (fictional .example merchant); not live market data',
+  },
+  'simulated-adversarial': {
+    cls: 'adv',
+    label: 'Adversarial sim',
+    title: 'Simulated adversarial listing injected by a drill',
+  },
 };
 export function ProvenanceTag({ p }: { p: Provenance }) {
   const v = PROVENANCE[p];
@@ -26,7 +54,10 @@ export function ProvenanceTag({ p }: { p: Provenance }) {
   );
 }
 export const SimTag = ({ label = 'Simulated' }: { label?: string }) => (
-  <span className="tag sim" title="Simulated value: no merchant API provides it. Clearly separated from verified data.">
+  <span
+    className="tag sim"
+    title="Simulated value: no merchant API provides it. Clearly separated from verified data."
+  >
     {label}
   </span>
 );
@@ -37,16 +68,40 @@ export function Button({
   size,
   loading,
   ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'danger' | 'ghost'; size?: 'sm' | 'lg'; loading?: boolean }) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: 'primary' | 'danger' | 'ghost';
+  size?: 'sm' | 'lg';
+  loading?: boolean;
+}) {
   return (
-    <button type="button" className={['btn', variant, size].filter(Boolean).join(' ')} disabled={loading || rest.disabled} aria-busy={loading || undefined} {...rest}>
+    <button
+      type="button"
+      className={['btn', variant, size].filter(Boolean).join(' ')}
+      disabled={loading || rest.disabled}
+      aria-busy={loading || undefined}
+      {...rest}
+    >
       {loading && <span className="spin" aria-hidden="true" />}
       {children}
     </button>
   );
 }
 
-export function Panel({ title, sub, actions, children, flush, id }: { title?: ReactNode; sub?: ReactNode; actions?: ReactNode; children: ReactNode; flush?: boolean; id?: string }) {
+export function Panel({
+  title,
+  sub,
+  actions,
+  children,
+  flush,
+  id,
+}: {
+  title?: ReactNode;
+  sub?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+  flush?: boolean;
+  id?: string;
+}) {
   return (
     <section className="panel" id={id} aria-label={typeof title === 'string' ? title : undefined}>
       {(title || actions) && (
@@ -61,7 +116,17 @@ export function Panel({ title, sub, actions, children, flush, id }: { title?: Re
   );
 }
 
-export function Callout({ tone, title, children, icon }: { tone: 'danger' | 'warn' | 'ok' | 'info'; title?: ReactNode; children?: ReactNode; icon?: ReactNode }) {
+export function Callout({
+  tone,
+  title,
+  children,
+  icon,
+}: {
+  tone: 'danger' | 'warn' | 'ok' | 'info';
+  title?: ReactNode;
+  children?: ReactNode;
+  icon?: ReactNode;
+}) {
   const Ic = tone === 'ok' ? IconCheck : tone === 'info' ? IconInfo : IconAlert;
   return (
     <div className={`callout ${tone}`} role={tone === 'danger' ? 'alert' : 'status'}>
@@ -74,7 +139,15 @@ export function Callout({ tone, title, children, icon }: { tone: 'danger' | 'war
   );
 }
 
-export function Empty({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
+export function Empty({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children?: ReactNode;
+  action?: ReactNode;
+}) {
   return (
     <div className="empty">
       <div className="t">{title}</div>
@@ -99,7 +172,12 @@ export function LoadingBlock({ rows = 4 }: { rows?: number }) {
 }
 
 export function ErrorBlock({ error, retry }: { error: unknown; retry?: () => void }) {
-  const msg = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'Something went wrong';
+  const msg =
+    error instanceof ApiError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : 'Something went wrong';
   const code = error instanceof ApiError ? error.code : null;
   return (
     <Callout tone="danger" title="Could not load this view">
@@ -119,14 +197,32 @@ export function ErrorBlock({ error, retry }: { error: unknown; retry?: () => voi
 }
 
 /** Wraps a react-query result with consistent loading / error / empty handling. */
-export function QueryView<T>({ q, children, rows }: { q: { data: T | undefined; isLoading: boolean; error: unknown; refetch: () => unknown }; children: (data: T) => ReactNode; rows?: number }) {
+export function QueryView<T>({
+  q,
+  children,
+  rows,
+}: {
+  q: { data: T | undefined; isLoading: boolean; error: unknown; refetch: () => unknown };
+  children: (data: T) => ReactNode;
+  rows?: number;
+}) {
   if (q.isLoading) return <LoadingBlock rows={rows} />;
   if (q.error) return <ErrorBlock error={q.error} retry={() => void q.refetch()} />;
   if (q.data === undefined) return null;
   return <>{children(q.data)}</>;
 }
 
-export function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer: ReactNode }) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer: ReactNode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -180,4 +276,5 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export const errorText = (e: unknown) => (e instanceof ApiError ? `${e.message}` : e instanceof Error ? e.message : 'Request failed');
+export const errorText = (e: unknown) =>
+  e instanceof ApiError ? `${e.message}` : e instanceof Error ? e.message : 'Request failed';
