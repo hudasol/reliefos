@@ -34,6 +34,21 @@ const envSchema = z.object({
 
 export type AppConfig = ReturnType<typeof loadConfig>;
 
+const REPORTED_KEYS = [
+  'DATABASE_URL',
+  'SESSION_SECRET',
+  'PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_SECRET',
+  'CHANNEL3_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'AG_STUDIO_LICENSE_KEY',
+];
+
+/** Which expected variables are set (non-empty). Names only — values are never included. */
+export function presenceReport(env: NodeJS.ProcessEnv): string {
+  return `Environment: ${REPORTED_KEYS.map((k) => `${k}=${env[k]?.trim() ? 'set' : 'missing'}`).join(', ')}`;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const parsed = envSchema.parse(env);
   if (parsed.PAYPAL_ENVIRONMENT === 'live') {
@@ -44,7 +59,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     // Embedded PGlite reserves ~600 MB of memory and keeps data on an ephemeral disk: unsuitable
     // for a hosted deployment. Fail loudly instead of crash-looping out of memory.
     throw new Error(
-      'DATABASE_URL is required in production (link the Render Postgres internal URL).',
+      `DATABASE_URL is required in production (link the Render Postgres internal URL). ${presenceReport(env)}`,
     );
   }
   if (parsed.NODE_ENV === 'production' && !parsed.SESSION_SECRET) {
