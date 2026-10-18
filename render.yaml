@@ -1,0 +1,44 @@
+# Render Blueprint for RELIEFOS: one Node web service (API + built client) and a PostgreSQL database.
+# Secrets marked `sync: false` are entered in the Render dashboard; they are never committed.
+services:
+  - type: web
+    name: reliefos
+    runtime: node
+    region: virginia
+    plan: free
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/ready
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reliefos-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: PAYPAL_ENVIRONMENT
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: CHANNEL3_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-5-5
+      - key: AG_STUDIO_LICENSE_KEY
+        sync: false
+
+databases:
+  - name: reliefos-db
+    region: virginia
+    plan: free
+    databaseName: reliefos_db
+    user: reliefos_db_user
+    postgresMajorVersion: '17'

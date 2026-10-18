@@ -23,7 +23,7 @@ const envSchema = z.object({
   PAYPAL_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   CHANNEL3_API_KEY: optionalString,
   ANTHROPIC_API_KEY: optionalString,
-  ANTHROPIC_MODEL: z.string().default('claude-sonnet-5-5'),
+  ANTHROPIC_MODEL: z.string().default('claude-opus-5-5'),
   AG_STUDIO_LICENSE_KEY: optionalString,
   AG_GRID_LICENSE_KEY: optionalString,
   RENDER_API_KEY: optionalString,
