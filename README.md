@@ -167,7 +167,9 @@ The tests cover:
 
 ## Deployment status
 
-- **Render web service** `reliefos` (Virginia, free) auto-deploys from `main`. The service needs
+- **Render web service** `reliefos` (Virginia, free) builds from `main`. It was created from the public
+  repository URL, so pushes do not trigger deploys until the Render GitHub app is connected to the
+  repository; until then, redeploy manually (dashboard → *Manual Deploy*). The service needs
   `DATABASE_URL` linked to the `reliefos-db` Render Postgres, because embedded PGlite needs about 600 MB
   RAM and does not fit the 512 MB free instance. The Blueprint (`render.yaml`) wires this automatically
   for new deployments.
